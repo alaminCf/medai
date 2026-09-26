@@ -34,10 +34,17 @@ async function main() {
 
   console.log('✅ Seeded users:', studentUser.email, adminUser.email);
 
-  // Case 1: Chest Pain
+  // Case 1: Chest Pain (Rahim Ahmed)
   const case1 = await prisma.patientCase.upsert({
     where: { slug: 'chest-pain-rahim' },
-    update: {},
+    update: {
+      voiceProvider: 'browser',
+      voiceId: 'onyx',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'anxious',
+      speakingSpeed: 1.0,
+    },
     create: {
       title: 'Chest Pain',
       slug: 'chest-pain-rahim',
@@ -51,6 +58,12 @@ async function main() {
       chiefComplaint: 'I have been having some discomfort in my chest for the past few days.',
       caseSummary: 'A 52-year-old male presenting with chest discomfort. History taking should explore cardiac risk factors.',
       personality: 'anxious',
+      voiceProvider: 'browser',
+      voiceId: 'onyx',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'anxious',
+      speakingSpeed: 1.0,
       isActive: true,
       clinicalData: {
         create: {
@@ -69,10 +82,17 @@ async function main() {
     },
   });
 
-  // Case 2: Fever
+  // Case 2: Fever (Fatima Begum)
   const case2 = await prisma.patientCase.upsert({
     where: { slug: 'fever-fatima' },
-    update: {},
+    update: {
+      voiceProvider: 'browser',
+      voiceId: 'nova',
+      voiceGender: 'female',
+      voiceLanguage: 'en',
+      speakingStyle: 'quiet',
+      speakingSpeed: 0.95,
+    },
     create: {
       title: 'Fever and Malaise',
       slug: 'fever-fatima',
@@ -86,6 +106,12 @@ async function main() {
       chiefComplaint: 'I have had a high fever for the last 4 days that will not go down.',
       caseSummary: 'A 28-year-old female presenting with 4-day history of high fever, body aches, and fatigue.',
       personality: 'quiet',
+      voiceProvider: 'browser',
+      voiceId: 'nova',
+      voiceGender: 'female',
+      voiceLanguage: 'en',
+      speakingStyle: 'quiet',
+      speakingSpeed: 0.95,
       isActive: true,
       clinicalData: {
         create: {
@@ -104,10 +130,17 @@ async function main() {
     },
   });
 
-  // Case 3: Headache
+  // Case 3: Headache (Tanvir Hossain)
   const case3 = await prisma.patientCase.upsert({
     where: { slug: 'headache-tanvir' },
-    update: {},
+    update: {
+      voiceProvider: 'browser',
+      voiceId: 'echo',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'talkative',
+      speakingSpeed: 1.05,
+    },
     create: {
       title: 'Recurrent Headache',
       slug: 'headache-tanvir',
@@ -121,6 +154,12 @@ async function main() {
       chiefComplaint: 'I get these terrible throbbing headaches that make it impossible to work.',
       caseSummary: 'A 34-year-old software engineer presenting with episodic unilateral throbbing headaches.',
       personality: 'talkative',
+      voiceProvider: 'browser',
+      voiceId: 'echo',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'talkative',
+      speakingSpeed: 1.05,
       isActive: true,
       clinicalData: {
         create: {
@@ -139,10 +178,17 @@ async function main() {
     },
   });
 
-  // Case 4: Abdominal Pain
+  // Case 4: Abdominal Pain (Nusrat Jahan)
   const case4 = await prisma.patientCase.upsert({
     where: { slug: 'abdominal-pain-nusrat' },
-    update: {},
+    update: {
+      voiceProvider: 'browser',
+      voiceId: 'shimmer',
+      voiceGender: 'female',
+      voiceLanguage: 'en',
+      speakingStyle: 'anxious',
+      speakingSpeed: 1.0,
+    },
     create: {
       title: 'Acute Abdominal Pain',
       slug: 'abdominal-pain-nusrat',
@@ -156,6 +202,12 @@ async function main() {
       chiefComplaint: 'My stomach has been hurting really badly since yesterday and it seems to be getting worse.',
       caseSummary: 'A 22-year-old female presenting with acute onset abdominal pain shifting from periumbilical to right iliac fossa.',
       personality: 'anxious',
+      voiceProvider: 'browser',
+      voiceId: 'shimmer',
+      voiceGender: 'female',
+      voiceLanguage: 'en',
+      speakingStyle: 'anxious',
+      speakingSpeed: 1.0,
       isActive: true,
       clinicalData: {
         create: {
@@ -174,10 +226,17 @@ async function main() {
     },
   });
 
-  // Case 5: Shortness of Breath
+  // Case 5: Shortness of Breath (Abdul Karim)
   const case5 = await prisma.patientCase.upsert({
     where: { slug: 'dyspnea-abdul' },
-    update: {},
+    update: {
+      voiceProvider: 'browser',
+      voiceId: 'fable',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'confused',
+      speakingSpeed: 0.9,
+    },
     create: {
       title: 'Shortness of Breath',
       slug: 'dyspnea-abdul',
@@ -191,6 +250,12 @@ async function main() {
       chiefComplaint: 'I cannot catch my breath even when just walking across the room, doctor.',
       caseSummary: 'A 68-year-old male with progressive dyspnea, orthopnea, and bilateral lower limb swelling.',
       personality: 'confused',
+      voiceProvider: 'browser',
+      voiceId: 'fable',
+      voiceGender: 'male',
+      voiceLanguage: 'en',
+      speakingStyle: 'confused',
+      speakingSpeed: 0.9,
       isActive: true,
       clinicalData: {
         create: {
@@ -209,7 +274,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Seeded patient cases:', [case1, case2, case3, case4, case5].map(c => c.title).join(', '));
+  console.log('✅ Seeded patient cases with voice profiles:', [case1, case2, case3, case4, case5].map(c => c.title).join(', '));
   console.log('🎉 Database seeding complete!');
 }
 

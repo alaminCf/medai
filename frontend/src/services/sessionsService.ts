@@ -1,17 +1,55 @@
 import api from './api';
-import type { PracticeSession, ConversationMessage } from '../types';
+import type {
+  PracticeSession,
+  ConversationMessage,
+  ConsultationLanguage,
+  MessageType,
+} from '../types';
+
+export interface StartSessionOptions {
+  language?: ConsultationLanguage;
+  voiceEnabled?: boolean;
+}
+
+export interface SendMessagePayload {
+  message: string;
+  messageType?: MessageType;
+  transcription?: string;
+  audioUrl?: string;
+}
+
+export interface SendMessageResponse {
+  studentMessage: ConversationMessage;
+  patientMessage: ConversationMessage;
+  provider: string;
+  hasBackendTTS?: boolean;
+  language?: ConsultationLanguage;
+  voiceConfig?: {
+    voiceId?: string;
+    voiceGender?: string;
+    speakingSpeed?: number;
+  };
+}
 
 export const sessionsService = {
-  async startSession(caseId: string): Promise<{ session: PracticeSession; openingMessage: ConversationMessage }> {
-    const { data } = await api.post('/sessions/start', { caseId });
+  async startSession(
+    caseId: string,
+    options?: StartSessionOptions
+  ): Promise<{ session: PracticeSession; openingMessage: ConversationMessage }> {
+    const { data } = await api.post('/sessions/start', {
+      caseId,
+      language: options?.language || 'en',
+      voiceEnabled: options?.voiceEnabled !== false,
+    });
     return data;
   },
 
   async sendMessage(
     sessionId: string,
-    message: string
-  ): Promise<{ studentMessage: ConversationMessage; patientMessage: ConversationMessage }> {
-    const { data } = await api.post(`/sessions/${sessionId}/message`, { message });
+    payload: string | SendMessagePayload
+  ): Promise<SendMessageResponse> {
+    const body = typeof payload === 'string' ? { message: payload } : payload;
+    const { data } = await api.post<SendMessageResponse>(`/sessions/${sessionId}/message`, body);
     return data;
   },
 
@@ -30,3 +68,5 @@ export const sessionsService = {
     return data.sessions;
   },
 };
+
+export default sessionsService;

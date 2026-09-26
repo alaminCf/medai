@@ -36,6 +36,15 @@ model PatientCase {
   caseSummary         String?
   personality         String             @default("calm")
   isActive            Boolean            @default(true)
+  
+  // Phase 2: Patient Voice Profile
+  voiceProvider       String             @default("browser")
+  voiceId             String?
+  voiceGender         String?
+  voiceLanguage       String             @default("en")
+  speakingStyle       String             @default("natural")
+  speakingSpeed       Float              @default(1.0)
+
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -74,6 +83,12 @@ model PracticeSession {
   patientCaseId   String
   patientCase     PatientCase   @relation(fields: [patientCaseId], references: [id])
   status          String        @default("active")
+  
+  // Phase 2: Session Voice and Language Settings
+  language        String        @default("en")
+  voiceEnabled    Boolean       @default(true)
+  voiceProvider   String?
+
   startedAt       DateTime      @default(now())
   endedAt         DateTime?
   duration        Int?
@@ -91,6 +106,12 @@ model ConversationMessage {
   practiceSession   PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
   sender            String
   message           String
+  
+  // Phase 2: Voice message metadata
+  messageType       String          @default("text")
+  audioUrl          String?
+  transcription     String?
+
   timestamp         DateTime        @default(now())
 
   @@map("conversation_messages")

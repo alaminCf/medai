@@ -56,6 +56,15 @@ export interface PatientCase {
   caseSummary?: string;
   personality: PatientPersonality;
   createdAt: string;
+  
+  // Phase 2: Voice settings
+  voiceProvider?: string;
+  voiceId?: string;
+  voiceGender?: string;
+  voiceLanguage?: string;
+  speakingStyle?: string;
+  speakingSpeed?: number;
+
   clinicalData?: {
     learningObjectives?: string;
   };
@@ -67,12 +76,27 @@ export interface PatientCase {
 
 export type SessionStatus = 'active' | 'completed' | 'abandoned';
 export type MessageSender = 'student' | 'patient' | 'system';
+export type MessageType = 'text' | 'voice';
+export type ConsultationLanguage = 'en' | 'bn';
+export type ConsultationMode = 'voice' | 'text';
+
+export type VoiceState =
+  | 'idle'
+  | 'listening'
+  | 'transcribing'
+  | 'thinking'
+  | 'speaking'
+  | 'paused'
+  | 'error';
 
 export interface ConversationMessage {
   id: string;
   sender: MessageSender;
   message: string;
   timestamp: string;
+  messageType?: MessageType;
+  audioUrl?: string | null;
+  transcription?: string | null;
 }
 
 export interface PracticeSession {
@@ -84,6 +108,12 @@ export interface PracticeSession {
   endedAt?: string;
   duration?: number;
   createdAt: string;
+  
+  // Phase 2: Session settings
+  language?: ConsultationLanguage;
+  voiceEnabled?: boolean;
+  voiceProvider?: string | null;
+
   patientCase: {
     id: string;
     title: string;
@@ -94,9 +124,21 @@ export interface PracticeSession {
     difficulty: CaseDifficulty;
     estimatedDuration?: number;
     category?: string;
+    voiceProvider?: string;
+    voiceId?: string;
+    voiceGender?: string;
+    speakingSpeed?: number;
   };
   messages?: ConversationMessage[];
   _count?: { messages: number };
+}
+
+// Phase 3 Preparation Event Types
+export interface PatientVoiceEvents {
+  onResponseStarted?: () => void;
+  onAudioReady?: (audioUrl: string | Blob) => void;
+  onAudioPlaying?: () => void;
+  onAudioFinished?: () => void;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
