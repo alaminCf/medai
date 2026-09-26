@@ -56,6 +56,7 @@ model PatientCase {
   updatedAt           DateTime           @updatedAt
 
   clinicalData        PatientCaseClinicalData?
+  rubric              ClinicalCaseRubric?
   sessions            PracticeSession[]
 
   @@map("patient_cases")
@@ -105,10 +106,11 @@ model PracticeSession {
   startedAt       DateTime      @default(now())
   endedAt         DateTime?
   duration        Int?
-  createdAt       DateTime      @default(now())
+createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   messages        ConversationMessage[]
+  attempts        PracticeAttempt[]
 
   @@map("practice_sessions")
 }
@@ -129,7 +131,131 @@ model ConversationMessage {
   emotion           String?
   emotionIntensity  Float?
 
+  // Phase 4: Silent Intent & Category metadata (not leaked to student during session)
+  detectedCategory  String?
+  detectedIntent    String?
+
   timestamp         DateTime        @default(now())
 
   @@map("conversation_messages")
+}
+
+// ==========================================
+// PHASE 4: CLINICAL INTELLIGENCE & EVALUATION
+// ==========================================
+
+model ClinicalCaseRubric {
+  id                  String       @id @default(uuid())
+  patientCaseId       String       @unique
+  patientCase         PatientCase  @relation(fields: [patientCaseId], references: [id], onDelete: Cascade)
+  version             Int          @default(1)
+  learningObjectives  String?      // JSON array of strings
+  scoringWeights      String?      // JSON: { historyTaking: 40, communication: 20, clinicalReasoning: 20, patientCenteredness: 10, consultationStructure: 10 }
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  items               RubricItem[]
+
+  @@map("clinical_case_rubrics")
+}
+
+model RubricItem {
+  id                  String             @id @default(uuid())
+  rubricId            String
+  rubric              ClinicalCaseRubric @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  category            String             // e.g. "History of Presenting Complaint", "Associated Symptoms", "Past Medical History", "Red Flags", etc.
+  title               String             // e.g. "Pain Location & Character"
+  description         String?
+  intent              String             // e.g. "pain_location", "pain_radiation", "cardiac_risk_factors"
+  sampleQuestions     String?            // JSON array of sample questions
+  importance          String             @default("required") // "required", "recommended", "red_flag"
+  clinicalRationale   String?            // Why this matters clinically in this case
+  weight              Float              @default(1.0)
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  evidence            EvaluationEvidence[]
+
+  @@map("rubric_items")
+}
+
+model PracticeAttempt {
+  id                        String              @id @default(uuid())
+  practiceSessionId         String
+  practiceSession           PracticeSession     @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
+  attemptNumber             Int                 @default(1)
+  startedAt                 DateTime            @default(now())
+  endedAt                   DateTime?
+  duration                  Int?
+  
+  // High-level scores (0 - 100)
+  historyScore              Float?
+  communicationScore        Float?
+  reasoningScore            Float?
+  patientCenterednessScore  Float?
+  structureScore            Float?
+  overallScore              Float?
+  status                    String              @default("completed") // "completed", "evaluated"
+
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  evaluation                ClinicalEvaluation?
+
+  @@map("practice_attempts")
+}
+
+model ClinicalEvaluation {
+  id                        String              @id @default(uuid())
+  practiceAttemptId         String              @unique
+  practiceAttempt           PracticeAttempt     @relation(fields: [practiceAttemptId], references: [id], onDelete: Cascade)
+  
+  historyScore              Float
+  communicationScore        Float
+  reasoningScore            Float
+  patientCenterednessScore  Float
+  structureScore            Float
+  overallScore              Float
+
+  coveredCount              Int                 @default(0)
+  partialCount              Int                 @default(0)
+  missedCount               Int                 @default(0)
+  totalCount                Int                 @default(0)
+
+  overallSummary            String
+  strengths                 String?             // JSON array of strings
+  improvements              String?             // JSON array of strings
+  communicationFeedback     String?             // JSON object
+  reasoningFeedback         String?             // JSON object
+  structureFeedback         String?             // JSON object
+  missedQuestions           String?             // JSON array of strings
+  prematureDiagnosis        Boolean             @default(false)
+  
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  evidence                  EvaluationEvidence[]
+
+  @@map("clinical_evaluations")
+}
+
+model EvaluationEvidence {
+  id                        String              @id @default(uuid())
+  clinicalEvaluationId      String
+  clinicalEvaluation        ClinicalEvaluation  @relation(fields: [clinicalEvaluationId], references: [id], onDelete: Cascade)
+  rubricItemId              String?
+  rubricItem                RubricItem?         @relation(fields: [rubricItemId], references: [id], onDelete: SetNull)
+  category                  String
+  title                     String
+  intent                    String?
+  status                    String              // "covered", "partial", "missed", "not_applicable", "insufficient_evidence"
+  studentQuote              String?
+  feedback                  String
+  importance                String              @default("required") // "required", "recommended", "red_flag"
+
+  createdAt                 DateTime            @default(now())
+
+  @@map("evaluation_evidences")
 }

@@ -81,4 +81,140 @@ router.patch('/cases/:id/toggle', async (req: AuthRequest, res: Response): Promi
   }
 });
 
+
+// ==========================================
+// PHASE 4: CLINICAL RUBRIC MANAGEMENT (ADMIN)
+// ==========================================
+
+// Get full rubric for a case
+router.get('/cases/:id/rubric', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const rubric = await prisma.clinicalCaseRubric.findUnique({
+      where: { patientCaseId: req.params.id },
+      include: {
+        items: {
+          orderBy: { category: 'asc' },
+        },
+      },
+    });
+
+    if (!rubric) {
+      res.status(404).json({ error: 'Rubric not found' });
+      return;
+    }
+
+    res.json({
+      rubric: {
+        ...rubric,
+        learningObjectives: rubric.learningObjectives ? JSON.parse(rubric.learningObjectives) : [],
+        scoringWeights: rubric.scoringWeights ? JSON.parse(rubric.scoringWeights) : null,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch admin rubric' });
+  }
+});
+
+// Update case rubric metadata
+router.put('/cases/:id/rubric', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { learningObjectives, scoringWeights } = req.body;
+  try {
+    const updated = await prisma.clinicalCaseRubric.upsert({
+      where: { patientCaseId: req.params.id },
+      update: {
+        learningObjectives: learningObjectives ? JSON.stringify(learningObjectives) : undefined,
+        scoringWeights: scoringWeights ? JSON.stringify(scoringWeights) : undefined,
+      },
+      create: {
+        patientCaseId: req.params.id,
+        learningObjectives: learningObjectives ? JSON.stringify(learningObjectives) : JSON.stringify([]),
+        scoringWeights: scoringWeights ? JSON.stringify(scoringWeights) : JSON.stringify({
+          historyTaking: 40,
+          communication: 20,
+          clinicalReasoning: 20,
+          patientCenteredness: 10,
+          consultationStructure: 10,
+        }),
+      },
+      include: { items: true },
+    });
+    res.json({ rubric: updated });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update rubric' });
+  }
+});
+
+// Create rubric item
+router.post('/cases/:id/rubric/items', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { category, title, description, intent, sampleQuestions, importance, clinicalRationale, weight } = req.body;
+  try {
+    let rubric = await prisma.clinicalCaseRubric.findUnique({
+      where: { patientCaseId: req.params.id },
+    });
+    if (!rubric) {
+      rubric = await prisma.clinicalCaseRubric.create({
+        data: { patientCaseId: req.params.id },
+      });
+    }
+
+    const item = await prisma.rubricItem.create({
+      data: {
+        rubricId: rubric.id,
+        category,
+        title,
+        description: description || null,
+        intent: intent || title.toLowerCase().replace(/\s+/g, '_'),
+        sampleQuestions: sampleQuestions ? JSON.stringify(sampleQuestions) : null,
+        importance: importance || 'required',
+        clinicalRationale: clinicalRationale || null,
+        weight: weight !== undefined ? parseFloat(weight) : 1.0,
+        isActive: true,
+      },
+    });
+
+    res.status(201).json({ item });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create rubric item' });
+  }
+});
+
+// Update rubric item
+router.put('/rubric/items/:itemId', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { itemId } = req.params;
+  const { category, title, description, intent, sampleQuestions, importance, clinicalRationale, weight, isActive } = req.body;
+
+  try {
+    const updated = await prisma.rubricItem.update({
+      where: { id: itemId },
+      data: {
+        category,
+        title,
+        description,
+        intent,
+        sampleQuestions: sampleQuestions ? JSON.stringify(sampleQuestions) : undefined,
+        importance,
+        clinicalRationale,
+        weight: weight !== undefined ? parseFloat(weight) : undefined,
+        isActive: isActive !== undefined ? Boolean(isActive) : undefined,
+      },
+    });
+    res.json({ item: updated });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update rubric item' });
+  }
+});
+
+// Delete/deactivate rubric item
+router.delete('/rubric/items/:itemId', async (req: AuthRequest, res: Response): Promise<void> => {
+  const { itemId } = req.params;
+  try {
+    await prisma.rubricItem.delete({
+      where: { id: itemId },
+    });
+    res.json({ success: true, message: 'Rubric item deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete rubric item' });
+  }
+});
+
 export default router;

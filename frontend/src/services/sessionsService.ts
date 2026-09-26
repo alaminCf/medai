@@ -1,5 +1,8 @@
 import api from './api';
 import type {
+  EvaluationReportData,
+  PracticeAttempt,
+  ClinicalCaseRubric,
   PracticeSession,
   ConversationMessage,
   ConsultationLanguage,
@@ -78,6 +81,27 @@ export const sessionsService = {
   async getSessions(): Promise<PracticeSession[]> {
     const { data } = await api.get<{ sessions: PracticeSession[] }>('/sessions');
     return data.sessions;
+  },
+
+  // Phase 4: Clinical Evaluation & Attempts
+  async getEvaluation(sessionId: string): Promise<EvaluationReportData> {
+    const { data } = await api.get<EvaluationReportData>(`/sessions/${sessionId}/evaluation`);
+    return data;
+  },
+
+  async getAttempts(sessionId: string): Promise<{ attempts: PracticeAttempt[] }> {
+    const { data } = await api.get<{ attempts: PracticeAttempt[] }>(`/sessions/${sessionId}/attempts`);
+    return data;
+  },
+
+  async retrySession(sessionId: string): Promise<{ session: PracticeSession; attemptNumber: number; openingMessage: ConversationMessage }> {
+    const { data } = await api.post(`/sessions/${sessionId}/retry`);
+    return data;
+  },
+
+  async getCaseRubric(caseId: string): Promise<{ rubric: ClinicalCaseRubric }> {
+    const { data } = await api.get<{ rubric: ClinicalCaseRubric }>(`/cases/${caseId}/rubric`);
+    return data;
   },
 };
 

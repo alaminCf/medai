@@ -86,4 +86,51 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response): Promis
   }
 });
 
+
+// Get case learning objectives and rubric (Phase 4: protected view for students vs admins)
+router.get('/:id/rubric', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const rubric = await prisma.clinicalCaseRubric.findUnique({
+      where: { patientCaseId: req.params.id },
+      include: {
+        items: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            category: true,
+            title: true,
+            importance: true,
+            // Only include clinicalRationale and sampleQuestions for Admins/Educators
+            clinicalRationale: req.user!.role === 'admin',
+            sampleQuestions: req.user!.role === 'admin',
+            weight: req.user!.role === 'admin',
+          },
+        },
+      },
+    });
+
+    if (!rubric) {
+      res.status(404).json({ error: 'Rubric not found for this case' });
+      return;
+    }
+
+    const learningObjectives = rubric.learningObjectives ? JSON.parse(rubric.learningObjectives) : [];
+    const scoringWeights = rubric.scoringWeights ? JSON.parse(rubric.scoringWeights) : null;
+
+    res.json({
+      rubric: {
+        id: rubric.id,
+        version: rubric.version,
+        learningObjectives,
+        scoringWeights: req.user!.role === 'admin' ? scoringWeights : undefined,
+        categories: Array.from(new Set(rubric.items.map((i) => i.category))),
+        items: req.user!.role === 'admin' ? rubric.items : undefined,
+      },
+    });
+  } catch (error) {
+    console.error('Get rubric error:', error);
+    res.status(500).json({ error: 'Failed to fetch case rubric' });
+  }
+});
+
 export default router;

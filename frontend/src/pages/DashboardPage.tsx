@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, CheckCircle2, Clock, ArrowRight, Plus, History } from 'lucide-react';
+import { BookOpen, CheckCircle2, Clock, ArrowRight, Plus, History, TrendingUp, Brain } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usersService } from '../services/usersService';
 import type { DashboardData } from '../types';
@@ -86,6 +86,60 @@ export default function DashboardPage() {
         </Link>
       </div>
 
+
+      {/* Phase 4: Clinical Progress Section */}
+      <div className="card p-6 mb-8 bg-gradient-to-br from-white to-teal-50/40 border border-teal-100 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-teal-600 text-white flex items-center justify-center">
+              <Brain className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Clinical Progress</h2>
+              <p className="text-xs text-gray-500">Track your history-taking coverage and clinical communication skill development.</p>
+            </div>
+          </div>
+          <span className="text-xs bg-teal-100 text-teal-800 font-semibold px-2.5 py-0.5 rounded-full">
+            Rubric Calibrated
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs">
+            <span className="text-xs text-gray-500 block mb-1">Consultations Done</span>
+            <p className="text-2xl font-bold text-gray-900">{data?.stats.sessionsCompleted ?? 0}</p>
+            <span className="text-[11px] text-gray-400">Completed cases</span>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs">
+            <span className="text-xs text-gray-500 block mb-1">Total Practice Time</span>
+            <p className="text-2xl font-bold text-gray-900">
+              {data?.stats.practiceTimeMinutes ?? 0}
+              <span className="text-xs font-normal text-gray-500 ml-1">mins</span>
+            </p>
+            <span className="text-[11px] text-gray-400">Clinical consultation time</span>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-teal-100/80 shadow-2xs">
+            <span className="text-xs text-teal-700 font-medium block mb-1">Avg History Coverage</span>
+            <p className="text-2xl font-bold text-teal-600">
+              {data?.stats.averageHistoryCoverage ?? 0}%
+            </p>
+            <span className="text-[11px] text-teal-600/70">Core rubric items explored</span>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-purple-100/80 shadow-2xs">
+            <span className="text-xs text-purple-700 font-medium block mb-1 flex items-center gap-1">
+              <TrendingUp className="w-3.5 h-3.5" /> Recent Trajectory
+            </span>
+            <p className="text-2xl font-bold text-purple-600">
+              {(data?.stats.recentImprovement ?? 0) >= 0 ? "+" : ""}{data?.stats.recentImprovement ?? 0}%
+            </p>
+            <span className="text-[11px] text-purple-600/70">Latest attempt comparison</span>
+          </div>
+        </div>
+      </div>
+
       {/* Recent sessions */}
       <div className="card">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -129,6 +183,15 @@ export default function DashboardPage() {
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${session.status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                     {session.status}
                   </span>
+                  {session.status === 'completed' && (
+                    <Link
+                      to={`/session/${session.id}/evaluation`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-teal-700 hover:text-teal-900 font-semibold px-2 py-1 bg-teal-50 hover:bg-teal-100 rounded-md transition"
+                    >
+                      Evaluation
+                    </Link>
+                  )}
                 </div>
               </Link>
             ))}

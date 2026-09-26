@@ -6,6 +6,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { aiPatientEngine, PatientCaseContext, ConversationTurn } from '../services/aiPatientEngine';
 import speechRecognitionService from '../services/speechRecognitionService';
 import textToSpeechService from '../services/textToSpeechService';
+import { ClinicalEvaluationEngine } from '../services/clinicalEvaluationEngine';
 
 const router = Router();
 const upload = multer({
@@ -331,7 +332,10 @@ router.post(
           content: m.message,
         }));
 
-      // Save student message
+      // Silent clinical intent classification (Phase 4)
+      const classification = ClinicalEvaluationEngine.classifyQuestion(message.trim());
+
+      // Save student message with silent tracking (never leaked to student during session)
       const studentMsg = await prisma.conversationMessage.create({
         data: {
           practiceSessionId: sessionId,
@@ -340,6 +344,8 @@ router.post(
           messageType: activeMessageType,
           transcription: transcription || (activeMessageType === 'voice' ? message.trim() : null),
           audioUrl: audioUrl || null,
+          detectedCategory: classification.category,
+          detectedIntent: classification.intent,
         },
       });
 
@@ -386,7 +392,15 @@ router.post(
       const hasBackendTTS = textToSpeechService.isAvailable();
 
       res.json({
-        studentMessage: studentMsg,
+        studentMessage: {
+          id: studentMsg.id,
+          sender: studentMsg.sender,
+          message: studentMsg.message,
+          messageType: studentMsg.messageType,
+          transcription: studentMsg.transcription,
+          audioUrl: studentMsg.audioUrl,
+          timestamp: studentMsg.timestamp,
+        },
         patientMessage: patientMsg,
         provider: aiResponse.provider,
         emotion: aiResponse.emotion,
@@ -454,15 +468,133 @@ router.post('/:sessionId/end', authenticate, async (req: AuthRequest, res: Respo
           select: {
             id: true,
             title: true,
+            slug: true,
             patientName: true,
+            patientAge: true,
+            patientGender: true,
+            chiefComplaint: true,
             difficulty: true,
           },
         },
       },
     });
 
+    // Phase 4: Create or update PracticeAttempt
+    const existingAttemptsCount = await prisma.practiceAttempt.count({
+      where: { practiceSessionId: sessionId },
+    });
+    const attemptNumber = existingAttemptsCount + 1;
+
+    const attempt = await prisma.practiceAttempt.create({
+      data: {
+        practiceSessionId: sessionId,
+        attemptNumber,
+        startedAt: session.startedAt,
+        endedAt,
+        duration: durationSeconds,
+        status: 'completed',
+      },
+    });
+
+    // Phase 4: Run Two-Layer Clinical Evaluation
+    let evaluation: any = null;
+    try {
+      const rubric = await prisma.clinicalCaseRubric.findUnique({
+        where: { patientCaseId: session.patientCaseId },
+        include: { items: { where: { isActive: true } } },
+      });
+
+      if (rubric && rubric.items.length > 0) {
+        const messages = await prisma.conversationMessage.findMany({
+          where: { practiceSessionId: sessionId },
+          orderBy: { timestamp: 'asc' },
+        });
+
+        const scoringWeights = rubric.scoringWeights ? JSON.parse(rubric.scoringWeights) : undefined;
+
+        const evalResult = await ClinicalEvaluationEngine.evaluateConsultation({
+          caseTitle: updated.patientCase.title,
+          caseSlug: updated.patientCase.slug,
+          chiefComplaint: updated.patientCase.chiefComplaint,
+          patientAge: updated.patientCase.patientAge,
+          patientGender: updated.patientCase.patientGender,
+          rubricItems: rubric.items,
+          scoringWeights,
+          messages: messages.map((m) => ({
+            sender: m.sender,
+            message: m.message,
+            timestamp: m.timestamp,
+          })),
+        });
+
+        // Store ClinicalEvaluation
+        evaluation = await prisma.clinicalEvaluation.create({
+          data: {
+            practiceAttemptId: attempt.id,
+            historyScore: evalResult.historyScore,
+            communicationScore: evalResult.communicationScore,
+            reasoningScore: evalResult.reasoningScore,
+            patientCenterednessScore: evalResult.patientCenterednessScore,
+            structureScore: evalResult.structureScore,
+            overallScore: evalResult.overallScore,
+            coveredCount: evalResult.coveredCount,
+            partialCount: evalResult.partialCount,
+            missedCount: evalResult.missedCount,
+            totalCount: evalResult.totalCount,
+            overallSummary: evalResult.overallSummary,
+            strengths: JSON.stringify(evalResult.strengths),
+            improvements: JSON.stringify(evalResult.improvements),
+            communicationFeedback: JSON.stringify(evalResult.communicationFeedback),
+            reasoningFeedback: JSON.stringify(evalResult.reasoningFeedback),
+            structureFeedback: JSON.stringify(evalResult.structureFeedback),
+            missedQuestions: JSON.stringify(evalResult.missedQuestions),
+            prematureDiagnosis: evalResult.prematureDiagnosis,
+          },
+          include: {
+            evidence: true,
+          },
+        });
+
+        // Store EvaluationEvidence
+        for (const ev of evalResult.evidence) {
+          await prisma.evaluationEvidence.create({
+            data: {
+              clinicalEvaluationId: evaluation.id,
+              rubricItemId: ev.rubricItemId || null,
+              category: ev.category,
+              title: ev.title,
+              intent: ev.intent || null,
+              status: ev.status,
+              studentQuote: ev.studentQuote || null,
+              feedback: ev.feedback,
+              importance: ev.importance,
+            },
+          });
+        }
+
+        // Update Attempt with scores
+        await prisma.practiceAttempt.update({
+          where: { id: attempt.id },
+          data: {
+            historyScore: evalResult.historyScore,
+            communicationScore: evalResult.communicationScore,
+            reasoningScore: evalResult.reasoningScore,
+            patientCenterednessScore: evalResult.patientCenterednessScore,
+            structureScore: evalResult.structureScore,
+            overallScore: evalResult.overallScore,
+            status: 'evaluated',
+          },
+        });
+      }
+    } catch (evalError) {
+      console.error('Clinical evaluation calculation error:', evalError);
+      // Gracefully continue without breaking session completion
+    }
+
     res.json({
       session: updated,
+      attempt,
+      evaluation,
       messageCount,
       duration: durationSeconds,
     });
@@ -569,6 +701,284 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
   } catch (error) {
     console.error('Get sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+
+// ==========================================
+// PHASE 4: EVALUATION & ATTEMPTS ENDPOINTS
+// ==========================================
+
+// Get latest evaluation for a session
+router.get('/:sessionId/evaluation', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { sessionId } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    const session = await prisma.practiceSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        patientCase: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            patientName: true,
+            patientAge: true,
+            patientGender: true,
+            chiefComplaint: true,
+            difficulty: true,
+            category: true,
+            rubric: {
+              select: {
+                learningObjectives: true,
+              },
+            },
+          },
+        },
+        attempts: {
+          orderBy: { attemptNumber: 'desc' },
+          take: 1,
+          include: {
+            evaluation: {
+              include: {
+                evidence: {
+                  include: {
+                    rubricItem: {
+                      select: {
+                        id: true,
+                        category: true,
+                        title: true,
+                        importance: true,
+                        clinicalRationale: true,
+                        sampleQuestions: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.userId !== userId && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    const latestAttempt = session.attempts[0] || null;
+    const evaluation = latestAttempt?.evaluation || null;
+
+    if (!evaluation) {
+      res.status(404).json({
+        error: 'Evaluation not found',
+        message: 'Your consultation was saved. Evaluation is temporarily unavailable.',
+      });
+      return;
+    }
+
+    // Parse JSON fields safely
+    const parsedEval = {
+      ...evaluation,
+      strengths: evaluation.strengths ? JSON.parse(evaluation.strengths) : [],
+      improvements: evaluation.improvements ? JSON.parse(evaluation.improvements) : [],
+      communicationFeedback: evaluation.communicationFeedback ? JSON.parse(evaluation.communicationFeedback) : null,
+      reasoningFeedback: evaluation.reasoningFeedback ? JSON.parse(evaluation.reasoningFeedback) : null,
+      structureFeedback: evaluation.structureFeedback ? JSON.parse(evaluation.structureFeedback) : null,
+      missedQuestions: evaluation.missedQuestions ? JSON.parse(evaluation.missedQuestions) : [],
+    };
+
+    res.json({
+      session: {
+        id: session.id,
+        status: session.status,
+        startedAt: session.startedAt,
+        endedAt: session.endedAt,
+        duration: session.duration,
+        patientCase: session.patientCase,
+      },
+      attempt: {
+        id: latestAttempt.id,
+        attemptNumber: latestAttempt.attemptNumber,
+        startedAt: latestAttempt.startedAt,
+        endedAt: latestAttempt.endedAt,
+        duration: latestAttempt.duration,
+        scores: {
+          history: latestAttempt.historyScore,
+          communication: latestAttempt.communicationScore,
+          reasoning: latestAttempt.reasoningScore,
+          patientCenteredness: latestAttempt.patientCenterednessScore,
+          structure: latestAttempt.structureScore,
+          overall: latestAttempt.overallScore,
+        },
+      },
+      evaluation: parsedEval,
+    });
+  } catch (error) {
+    console.error('Get evaluation error:', error);
+    res.status(500).json({ error: 'Failed to fetch clinical evaluation' });
+  }
+});
+
+// Get all attempts for a session (progress tracking across multiple attempts)
+router.get('/:sessionId/attempts', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { sessionId } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    const session = await prisma.practiceSession.findUnique({
+      where: { id: sessionId },
+      select: { userId: true },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.userId !== userId && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    const attempts = await prisma.practiceAttempt.findMany({
+      where: { practiceSessionId: sessionId },
+      orderBy: { attemptNumber: 'asc' },
+      select: {
+        id: true,
+        attemptNumber: true,
+        startedAt: true,
+        endedAt: true,
+        duration: true,
+        historyScore: true,
+        communicationScore: true,
+        reasoningScore: true,
+        patientCenterednessScore: true,
+        structureScore: true,
+        overallScore: true,
+        status: true,
+        evaluation: {
+          select: {
+            id: true,
+            coveredCount: true,
+            partialCount: true,
+            missedCount: true,
+            totalCount: true,
+            overallSummary: true,
+          },
+        },
+      },
+    });
+
+    res.json({ attempts });
+  } catch (error) {
+    console.error('Get attempts error:', error);
+    res.status(500).json({ error: 'Failed to fetch attempts' });
+  }
+});
+
+// Retry consultation (Phase 4 "Try Again" functionality)
+router.post('/:sessionId/retry', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { sessionId } = req.params;
+  const userId = req.user!.id;
+
+  try {
+    const session = await prisma.practiceSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        patientCase: {
+          select: {
+            id: true,
+            title: true,
+            chiefComplaint: true,
+            personality: true,
+            patientName: true,
+            voiceProvider: true,
+            voiceId: true,
+            speakingSpeed: true,
+            avatarProvider: true,
+            avatarId: true,
+            avatarGender: true,
+            avatarAgeGroup: true,
+            avatarStyle: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      res.status(404).json({ error: 'Session not found' });
+      return;
+    }
+
+    if (session.userId !== userId) {
+      res.status(403).json({ error: 'Access denied' });
+      return;
+    }
+
+    const existingAttemptsCount = await prisma.practiceAttempt.count({
+      where: { practiceSessionId: sessionId },
+    });
+    const newAttemptNumber = existingAttemptsCount + 1;
+
+    // Reactivate session
+    const updatedSession = await prisma.practiceSession.update({
+      where: { id: sessionId },
+      data: {
+        status: 'active',
+        startedAt: new Date(),
+        endedAt: null,
+        duration: null,
+      },
+      include: {
+        patientCase: true,
+      },
+    });
+
+    // Delete prior active messages for fresh retry consultation attempt
+    await prisma.conversationMessage.deleteMany({
+      where: { practiceSessionId: sessionId },
+    });
+
+    // Create fresh initial opening message
+    const isBangla = session.language === 'bn';
+    const openingText = isBangla
+      ? `ডাক্তার সাহেব, ${session.patientCase.chiefComplaint}`
+      : `Hello doctor. ${session.patientCase.chiefComplaint}`;
+
+    const openingMessage = await prisma.conversationMessage.create({
+      data: {
+        practiceSessionId: sessionId,
+        sender: 'patient',
+        message: openingText,
+        messageType: session.voiceEnabled ? 'voice' : 'text',
+        emotion: session.patientCase.personality === 'anxious' ? 'anxious' : 'concerned',
+        emotionIntensity: 0.35,
+      },
+    });
+
+    res.json({
+      session: updatedSession,
+      attemptNumber: newAttemptNumber,
+      openingMessage,
+      avatarConfig: {
+        avatarProvider: session.avatarProvider,
+        avatarId: session.avatarId,
+        avatarGender: session.patientCase.avatarGender,
+        avatarAgeGroup: session.patientCase.avatarAgeGroup,
+        avatarStyle: session.patientCase.avatarStyle,
+      },
+    });
+  } catch (error) {
+    console.error('Retry session error:', error);
+    res.status(500).json({ error: 'Failed to retry consultation' });
   }
 });
 

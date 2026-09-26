@@ -206,6 +206,9 @@ export interface DashboardStats {
   casesAvailable: number;
   sessionsCompleted: number;
   practiceTimeMinutes: number;
+  averageHistoryCoverage?: number;
+  recentImprovement?: number;
+  totalEvaluations?: number;
 }
 
 export interface DashboardData {
@@ -221,4 +224,151 @@ export interface ApiError {
   error?: string;
   errors?: Array<{ msg: string; path?: string }>;
   message?: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// PHASE 4: Clinical Evaluation & Rubric types
+// ────────────────────────────────────────────────────────────────────────────
+
+export type EvaluationStatus = 'covered' | 'partial' | 'missed' | 'not_applicable' | 'insufficient_evidence';
+export type EvaluationImportance = 'required' | 'recommended' | 'red_flag';
+
+export interface EvaluationEvidenceItem {
+  id: string;
+  category: string;
+  title: string;
+  intent?: string;
+  status: EvaluationStatus;
+  studentQuote?: string;
+  feedback: string;
+  importance: EvaluationImportance;
+  rubricItem?: {
+    id?: string;
+    clinicalRationale?: string;
+    sampleQuestions?: string;
+  };
+}
+
+export interface ClinicalEvaluation {
+  id: string;
+  practiceAttemptId: string;
+  historyScore: number;
+  communicationScore: number;
+  reasoningScore: number;
+  patientCenterednessScore: number;
+  structureScore: number;
+  overallScore: number;
+  coveredCount: number;
+  partialCount: number;
+  missedCount: number;
+  totalCount: number;
+  overallSummary: string;
+  strengths: string[];
+  improvements: string[];
+  communicationFeedback?: {
+    questionStyle?: string;
+    empathy?: string;
+    jargonLevel?: string;
+    listening?: string;
+  } | null;
+  reasoningFeedback?: {
+    hypothesisDriven?: string;
+    redFlagExploration?: string;
+    prematureClosure?: string;
+  } | null;
+  structureFeedback?: {
+    flow?: string;
+    openingAndClosing?: string;
+  } | null;
+  missedQuestions: string[];
+  prematureDiagnosis: boolean;
+  evidence: EvaluationEvidenceItem[];
+  createdAt?: string;
+}
+
+export interface PracticeAttempt {
+  id: string;
+  attemptNumber: number;
+  startedAt: string;
+  endedAt?: string;
+  duration?: number;
+  historyScore?: number;
+  communicationScore?: number;
+  reasoningScore?: number;
+  patientCenterednessScore?: number;
+  structureScore?: number;
+  overallScore?: number;
+  status: string;
+  evaluation?: ClinicalEvaluation;
+}
+
+export interface EvaluationReportData {
+  session: {
+    id: string;
+    status: string;
+    startedAt: string;
+    endedAt?: string;
+    duration?: number;
+    patientCase: {
+      id: string;
+      title: string;
+      slug: string;
+      patientName: string;
+      patientAge: number;
+      patientGender: string;
+      chiefComplaint: string;
+      difficulty: string;
+      category: string;
+      estimatedDuration?: number;
+      rubric?: {
+        learningObjectives?: string[];
+      };
+    };
+  };
+  attempt: {
+    id: string;
+    attemptNumber: number;
+    startedAt: string;
+    endedAt?: string;
+    duration?: number;
+    scores: {
+      history?: number;
+      communication?: number;
+      reasoning?: number;
+      patientCenteredness?: number;
+      structure?: number;
+      overall?: number;
+    };
+  };
+  evaluation: ClinicalEvaluation;
+}
+
+export interface RubricItem {
+  id: string;
+  rubricId?: string;
+  category: string;
+  title: string;
+  description?: string;
+  intent: string;
+  sampleQuestions?: string;
+  importance: EvaluationImportance;
+  clinicalRationale?: string;
+  weight: number;
+  isActive: boolean;
+}
+
+export interface ClinicalCaseRubric {
+  id: string;
+  patientCaseId: string;
+  version: number;
+  learningObjectives: string[];
+  scoringWeights?: {
+    historyTaking: number;
+    communication: number;
+    clinicalReasoning: number;
+    patientCenteredness: number;
+    consultationStructure: number;
+  };
+  categories: string[];
+  items?: RubricItem[];
 }

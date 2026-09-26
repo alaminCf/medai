@@ -352,7 +352,7 @@ export default function PracticeSessionPage() {
     speechRecognitionService.abortListening();
     try {
       await sessionsService.endSession(sessionId);
-      navigate(`/history/${sessionId}`);
+      navigate(`/session/${sessionId}/evaluation`);
     } catch (err) {
       setError(getApiError(err));
       setIsEnding(false);

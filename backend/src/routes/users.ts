@@ -107,11 +107,44 @@ router.get('/dashboard', authenticate, async (req: AuthRequest, res: Response): 
 
     const practiceTimeMinutes = Math.floor((totalPracticeTime._sum.duration || 0) / 60);
 
+    // Phase 4: Fetch user evaluations for clinical progress stats
+    const userEvaluations = await prisma.clinicalEvaluation.findMany({
+      where: {
+        practiceAttempt: {
+          practiceSession: { userId },
+        },
+      },
+      select: {
+        historyScore: true,
+        overallScore: true,
+        coveredCount: true,
+        totalCount: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let averageHistoryCoverage = 0;
+    if (userEvaluations.length > 0) {
+      const sumHistory = userEvaluations.reduce((acc, curr) => acc + curr.historyScore, 0);
+      averageHistoryCoverage = Math.round(sumHistory / userEvaluations.length);
+    }
+
+    let recentImprovement = 0;
+    if (userEvaluations.length >= 2) {
+      recentImprovement = Math.round(userEvaluations[0].overallScore - userEvaluations[1].overallScore);
+    } else if (userEvaluations.length === 1) {
+      recentImprovement = Math.round(userEvaluations[0].overallScore);
+    }
+
     res.json({
       stats: {
         casesAvailable: totalCases,
         sessionsCompleted: completedSessions,
         practiceTimeMinutes,
+        averageHistoryCoverage,
+        recentImprovement,
+        totalEvaluations: userEvaluations.length,
       },
       recentSessions,
     });

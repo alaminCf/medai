@@ -23,6 +23,7 @@ export default function CaseDetailPage() {
   const navigate = useNavigate();
 
   const [patientCase, setPatientCase] = useState<PatientCase | null>(null);
+  const [rubricObjectives, setRubricObjectives] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +36,15 @@ export default function CaseDetailPage() {
     if (id) {
       casesService
         .getCase(id)
-        .then(setPatientCase)
+        .then((c) => {
+          setPatientCase(c);
+          return sessionsService.getCaseRubric(id);
+        })
+        .then((r) => {
+          if (r.rubric?.learningObjectives?.length) {
+            setRubricObjectives(r.rubric.learningObjectives);
+          }
+        })
         .catch(() => setError('Case not found.'))
         .finally(() => setIsLoading(false));
     }
@@ -57,7 +66,7 @@ export default function CaseDetailPage() {
     }
   };
 
-  const objectives: string[] = (() => {
+  const objectives: string[] = rubricObjectives.length > 0 ? rubricObjectives : (() => {
     try {
       return JSON.parse(patientCase?.clinicalData?.learningObjectives || '[]');
     } catch {

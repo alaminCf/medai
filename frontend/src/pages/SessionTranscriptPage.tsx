@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { sessionsService } from '../services/sessionsService';
 import type { PracticeSession } from '../types';
 import { DifficultyBadge, formatDuration } from '../utils/formatters';
-import { ArrowLeft, Clock, MessageSquare, Info, BookOpen, Mic, Globe } from 'lucide-react';
+import { ArrowLeft, Clock, MessageSquare, BookOpen, Mic, Globe, Award } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function SessionTranscriptPage() {
@@ -96,15 +96,24 @@ export default function SessionTranscriptPage() {
         </div>
       </div>
 
-      {/* Educational notice */}
-      <div className="card p-4 mb-5 flex items-start gap-3 bg-blue-50 border border-blue-100">
-        <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-semibold text-blue-900 mb-0.5">Clinical Feedback</p>
-          <p className="text-xs text-blue-700 leading-relaxed">
-            Detailed OSCE clinical evaluation and scoring will be available in Phase 3. Review your question sequence above for open-ended coverage (SOCRATES).
-          </p>
+      {/* Phase 4 Clinical Performance Report banner */}
+      <div className="card p-4 mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl">
+        <div className="flex items-start gap-3">
+          <Award className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-teal-950 mb-0.5">Clinical Performance Report Ready</p>
+            <p className="text-xs text-teal-700 leading-relaxed">
+              Structured evaluation across History Taking, Communication, Clinical Reasoning, and Patient-Centeredness with evidence quotes.
+            </p>
+          </div>
         </div>
+        <Link
+          to={`/session/${sessionId}/evaluation`}
+          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold shrink-0 transition flex items-center gap-1.5 shadow-sm"
+        >
+          <Award className="w-4 h-4" />
+          View Clinical Evaluation
+        </Link>
       </div>
 
       {/* Transcript */}

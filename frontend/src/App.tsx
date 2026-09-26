@@ -16,6 +16,7 @@ import CaseDetailPage from './pages/CaseDetailPage';
 import PracticeSessionPage from './pages/PracticeSessionPage';
 import SessionHistoryPage from './pages/SessionHistoryPage';
 import SessionTranscriptPage from './pages/SessionTranscriptPage';
+import ClinicalEvaluationPage from './pages/ClinicalEvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
@@ -64,6 +65,8 @@ export default function App() {
         <Route path="/cases" element={<CasesPage />} />
         <Route path="/cases/:id" element={<CaseDetailPage />} />
         <Route path="/session/:sessionId" element={<PracticeSessionPage />} />
+        <Route path="/session/:sessionId/evaluation" element={<ClinicalEvaluationPage />} />
+        <Route path="/sessions/:sessionId/evaluation" element={<ClinicalEvaluationPage />} />
         <Route path="/history" element={<SessionHistoryPage />} />
         <Route path="/history/:sessionId" element={<SessionTranscriptPage />} />
         <Route path="/profile" element={<ProfilePage />} />
