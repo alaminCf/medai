@@ -3,16 +3,20 @@ import { Link } from 'react-router-dom';
 import { BookOpen, CheckCircle2, Clock, ArrowRight, Plus, History, TrendingUp, Brain } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { usersService } from '../services/usersService';
-import type { DashboardData } from '../types';
+import type { DashboardData, LearningHubSummary } from '../types';
+import learningService from '../services/learningService';
+import { GraduationCap, FileText, Layers, MessageSquare } from 'lucide-react';
 import { DifficultyBadge, formatDuration } from '../utils/formatters';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
+  const [hubSummary, setHubSummary] = useState<LearningHubSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     usersService.getDashboard().then(setData).finally(() => setIsLoading(false));
+    learningService.getHubSummary().then(setHubSummary).catch(() => {});
   }, []);
 
   const greeting = () => {
@@ -30,6 +34,114 @@ export default function DashboardPage() {
           {greeting()}, {user?.name?.split(' ')[0] ?? 'Doctor'} 👋
         </h1>
         <p className="text-gray-500 text-sm">Here's your practice overview.</p>
+      </div>
+
+      {/* Phase 6: Academic Learning Workspace Integration */}
+      <div className="card p-6 mb-8 bg-gradient-to-br from-white via-teal-50/20 to-emerald-50/30 border border-teal-200/80 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4 border-b border-teal-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-navy-900">Academic Learning Workspace</h2>
+                <span className="text-[10px] font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded-full">
+                  Phase 6
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">
+                Lecture notes, AI synthesis, high-yield flashcards, MCQ practice, and academic viva voce.
+              </p>
+            </div>
+          </div>
+
+          <Link
+            to="/learning"
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition self-start sm:self-auto"
+          >
+            <span>Open Learning Hub</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {/* Academic Quick Launch Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <Link
+            to="/learning/materials"
+            className="bg-white p-3.5 rounded-xl border border-gray-100 hover:border-teal-300 hover:bg-teal-50/20 transition flex items-center justify-between"
+          >
+            <div>
+              <span className="text-[11px] text-gray-500 block">Study Materials</span>
+              <p className="text-lg font-bold text-navy-900">
+                {hubSummary?.stats?.materialsCount ?? 0}
+              </p>
+            </div>
+            <FileText className="w-4 h-4 text-teal-600" />
+          </Link>
+
+          <Link
+            to="/flashcards"
+            className="bg-white p-3.5 rounded-xl border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50/20 transition flex items-center justify-between"
+          >
+            <div>
+              <span className="text-[11px] text-gray-500 block">Flashcards Due</span>
+              <p className="text-lg font-bold text-emerald-600">
+                {hubSummary?.stats?.flashcardsDueCount ?? 0}
+              </p>
+            </div>
+            <Layers className="w-4 h-4 text-emerald-600" />
+          </Link>
+
+          <Link
+            to="/mcq"
+            className="bg-white p-3.5 rounded-xl border border-gray-100 hover:border-teal-300 hover:bg-teal-50/20 transition flex items-center justify-between"
+          >
+            <div>
+              <span className="text-[11px] text-gray-500 block">MCQ Accuracy</span>
+              <p className="text-lg font-bold text-teal-700">
+                {hubSummary?.stats?.mcqAccuracy ?? 0}%
+              </p>
+            </div>
+            <CheckCircle2 className="w-4 h-4 text-teal-600" />
+          </Link>
+
+          <Link
+            to="/viva"
+            className="bg-white p-3.5 rounded-xl border border-gray-100 hover:border-purple-300 hover:bg-purple-50/20 transition flex items-center justify-between"
+          >
+            <div>
+              <span className="text-[11px] text-gray-500 block">Recent Viva</span>
+              <p className="text-lg font-bold text-purple-600">
+                {hubSummary?.stats?.vivaCount ?? 0} <span className="text-xs font-normal text-gray-400">held</span>
+              </p>
+            </div>
+            <MessageSquare className="w-4 h-4 text-purple-600" />
+          </Link>
+        </div>
+
+        {/* Continue Studying Banner if active */}
+        {hubSummary?.continueStudying?.material && (
+          <div className="bg-white p-3.5 rounded-xl border border-teal-100 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded">
+                CONTINUE STUDYING
+              </span>
+              <span className="font-semibold text-gray-900 truncate">
+                {hubSummary.continueStudying.material.title}
+              </span>
+              <span className="text-gray-400 hidden sm:inline">
+                ({hubSummary.continueStudying.material.subject})
+              </span>
+            </div>
+            <Link
+              to={'/learning/materials/' + hubSummary.continueStudying.material.id}
+              className="text-teal-700 font-bold hover:underline flex items-center gap-1 flex-shrink-0"
+            >
+              Resume Reader <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Stats */}

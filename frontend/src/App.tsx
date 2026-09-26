@@ -9,7 +9,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 
-// Protected pages
+// Protected pages: Clinical Simulation (Phases 1-5)
 import DashboardPage from './pages/DashboardPage';
 import CasesPage from './pages/CasesPage';
 import CaseDetailPage from './pages/CaseDetailPage';
@@ -20,10 +20,20 @@ import ClinicalEvaluationPage from './pages/ClinicalEvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
-import ExamHubPage from "./pages/ExamHubPage";
-import OSCEStationPage from "./pages/OSCEStationPage";
-import OSCEResultPage from "./pages/OSCEResultPage";
+import ExamHubPage from './pages/ExamHubPage';
+import OSCEStationPage from './pages/OSCEStationPage';
+import OSCEResultPage from './pages/OSCEResultPage';
 
+// Protected pages: Academic Learning Hub & Study Workspace (Phase 6)
+import LearningHubPage from './pages/learning/LearningHubPage';
+import MaterialsLibraryPage from './pages/learning/MaterialsLibraryPage';
+import DocumentReaderPage from './pages/learning/DocumentReaderPage';
+import NotesPage from './pages/learning/NotesPage';
+import FlashcardsPage from './pages/learning/FlashcardsPage';
+import MCQPracticePage from './pages/learning/MCQPracticePage';
+import VivaPracticePage from './pages/learning/VivaPracticePage';
+import AITutorPage from './pages/learning/AITutorPage';
+import ProgressPage from './pages/learning/ProgressPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -65,6 +75,7 @@ export default function App() {
 
       {/* Protected — wrapped in AppLayout sidebar */}
       <Route element={<RequireAuth><AppLayout /></RequireAuth>}>
+        {/* Core & Clinical Simulation */}
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/cases" element={<CasesPage />} />
         <Route path="/cases/:id" element={<CaseDetailPage />} />
@@ -80,6 +91,17 @@ export default function App() {
         <Route path="/exams" element={<ExamHubPage />} />
         <Route path="/exams/:id/station/:stationId" element={<OSCEStationPage />} />
         <Route path="/exams/results/:attemptId" element={<OSCEResultPage />} />
+
+        {/* Phase 6: Academic Learning Hub & Study Workspace */}
+        <Route path="/learning" element={<LearningHubPage />} />
+        <Route path="/learning/materials" element={<MaterialsLibraryPage />} />
+        <Route path="/learning/materials/:id" element={<DocumentReaderPage />} />
+        <Route path="/notes" element={<NotesPage />} />
+        <Route path="/flashcards" element={<FlashcardsPage />} />
+        <Route path="/mcq" element={<MCQPracticePage />} />
+        <Route path="/viva" element={<VivaPracticePage />} />
+        <Route path="/ai-tutor" element={<AITutorPage />} />
+        <Route path="/progress" element={<ProgressPage />} />
 
         <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
       </Route>

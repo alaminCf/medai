@@ -18,6 +18,13 @@ model User {
 
   sessions        PracticeSession[]
   examAttempts    ExamAttempt[]
+  studyMaterials  StudyMaterial[]
+  studyNotes      StudyNote[]
+  flashcardDecks  FlashcardDeck[]
+  tutorConversations TutorConversation[]
+  mcqPracticeSessions MCQPracticeSession[]
+  vivaSessions    VivaSession[]
+  studySessions   StudySession[]
 
   @@map("users")
 }
@@ -470,4 +477,292 @@ model ExamIntegrityEvent {
   timestamp             DateTime              @default(now())
 
   @@map("exam_integrity_events")
+}
+
+
+// ==========================================
+// PHASE 6: SMART LEARNING HUB & ACADEMIC MODELS
+// ==========================================
+
+model MedicalSubject {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String   @unique
+  category    String   // "Pre-Clinical", "Para-Clinical", "Clinical"
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@map("medical_subjects")
+}
+
+model StudyMaterial {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  originalFileName String
+  fileType         String   // "pdf", "txt", "docx"
+  fileSize         Int
+  filePath         String?
+  subject          String
+  topic            String?
+  subtopic         String?
+  tags             String?
+  description      String?
+  extractedText    String?
+  processingStatus String   @default("READY") // "UPLOADING", "PROCESSING", "READY", "FAILED"
+  reviewStatus     String   @default("APPROVED") // "PENDING", "REVIEWED", "APPROVED", "REJECTED"
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  notes              StudyNote[]
+  flashcardDecks     FlashcardDeck[]
+  questionBanks      QuestionBank[]
+  tutorConversations TutorConversation[]
+  studySessions      StudySession[]
+
+  @@map("study_materials")
+}
+
+model StudyNote {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId   String?
+  material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  title        String
+  content      String
+  subject      String
+  topic        String?
+  tags         String?
+  sourceType   String         @default("PERSONAL") // "PERSONAL", "AI_GENERATED", "MATERIAL_BASED"
+  isPinned     Boolean        @default(false)
+  isFavorite   Boolean        @default(false)
+  reviewStatus String         @default("APPROVED")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@map("study_notes")
+}
+
+model TutorConversation {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId  String?
+  material    StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  subject     String?
+  topic       String?
+  mode        String         @default("EXPLAIN") // "EXPLAIN", "TEACH", "QUIZ_ME", "VIVA_ME", "REVISE"
+  title       String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  messages    TutorMessage[]
+
+  @@map("tutor_conversations")
+}
+
+model TutorMessage {
+  id              String            @id @default(uuid())
+  conversationId  String
+  conversation    TutorConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            String            // "user" | "assistant" | "system"
+  content         String
+  sourceReference String?
+  createdAt       DateTime          @default(now())
+
+  @@map("tutor_messages")
+}
+
+model FlashcardDeck {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId   String?
+  material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  title        String
+  subject      String
+  topic        String?
+  description  String?
+  reviewStatus String         @default("APPROVED")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  flashcards   Flashcard[]
+  reviews      FlashcardReview[]
+
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id              String          @id @default(uuid())
+  deckId          String
+  deck            FlashcardDeck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  question        String
+  answer          String
+  explanation     String?
+  sourceReference String?
+  difficulty      String          @default("medium") // "easy", "medium", "hard"
+  reviewStatus    String          @default("APPROVED")
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  reviews         FlashcardReview[]
+
+  @@map("flashcards")
+}
+
+model FlashcardReview {
+  id         String        @id @default(uuid())
+  userId     String
+  deckId     String
+  deck       FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  cardId     String
+  card       Flashcard     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  rating     String        // "again", "hard", "good", "easy"
+  reviewedAt DateTime      @default(now())
+
+  @@map("flashcard_reviews")
+}
+
+model QuestionBank {
+  id           String         @id @default(uuid())
+  userId       String?
+  materialId   String?
+  material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  subject      String
+  topic        String?
+  title        String
+  description  String?
+  reviewStatus String         @default("APPROVED")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  questions        MCQQuestion[]
+  practiceSessions MCQPracticeSession[]
+
+  @@map("question_banks")
+}
+
+model MCQQuestion {
+  id              String       @id @default(uuid())
+  questionBankId  String
+  questionBank    QuestionBank @relation(fields: [questionBankId], references: [id], onDelete: Cascade)
+  question        String
+  optionA         String
+  optionB         String
+  optionC         String
+  optionD         String
+  correctOption   String       // "A", "B", "C", "D"
+  explanation     String
+  difficulty      String       @default("medium") // "easy", "medium", "hard"
+  sourceReference String?
+  reviewStatus    String       @default("APPROVED")
+  createdAt       DateTime     @default(now())
+
+  @@map("mcq_questions")
+}
+
+model MCQPracticeSession {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionBankId String?
+  questionBank   QuestionBank? @relation(fields: [questionBankId], references: [id], onDelete: SetNull)
+  subject        String
+  topic          String?
+  totalQuestions Int
+  correctAnswers Int           @default(0)
+  score          Float         @default(0.0)
+  accuracy       Float         @default(0.0)
+  status         String        @default("active") // "active", "completed"
+  startedAt      DateTime      @default(now())
+  completedAt    DateTime?
+
+  answers        MCQAnswer[]
+
+  @@map("mcq_practice_sessions")
+}
+
+model MCQAnswer {
+  id             String             @id @default(uuid())
+  sessionId      String
+  session        MCQPracticeSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionId     String
+  selectedOption String             // "A", "B", "C", "D"
+  isCorrect      Boolean
+  createdAt      DateTime           @default(now())
+
+  @@map("mcq_answers")
+}
+
+model VivaSession {
+  id                   String         @id @default(uuid())
+  userId               String
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject              String
+  topic                String
+  difficulty           String         @default("medium") // "easy", "medium", "hard"
+  mode                 String         @default("TEXT") // "TEXT", "VOICE"
+  status               String         @default("in_progress") // "in_progress", "completed"
+  totalQuestions       Int            @default(5)
+  currentQuestionIndex Int            @default(0)
+  overallScore         Float?
+  startedAt            DateTime       @default(now())
+  completedAt          DateTime?
+
+  questions            VivaQuestion[]
+
+  @@map("viva_sessions")
+}
+
+model VivaQuestion {
+  id              String       @id @default(uuid())
+  sessionId       String
+  session         VivaSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  questionNumber  Int
+  question        String
+  expectedConcepts String      // JSON array string
+  sourceReference String?
+  createdAt       DateTime     @default(now())
+
+  response        VivaResponse?
+
+  @@map("viva_questions")
+}
+
+model VivaResponse {
+  id                 String       @id @default(uuid())
+  questionId         String       @unique
+  question           VivaQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  responseText       String
+  responseAudioUrl   String?
+  score              Float        @default(0.0)
+  keyConceptsCovered String?      // JSON array string
+  conceptsMissed     String?      // JSON array string
+  conceptsIncorrect  String?      // JSON array string
+  clarityScore       Float        @default(0.0)
+  feedback           String?
+  createdAt          DateTime     @default(now())
+
+  @@map("viva_responses")
+}
+
+model StudySession {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId      String?
+  material        StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  subject         String
+  topic           String?
+  activityType    String         // "READING", "NOTES", "MCQ", "FLASHCARD", "VIVA", "AI_TUTOR"
+  durationSeconds Int            @default(0)
+  startedAt       DateTime       @default(now())
+  endedAt         DateTime?
+
+  @@map("study_sessions")
 }

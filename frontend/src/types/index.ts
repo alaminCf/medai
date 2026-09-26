@@ -507,3 +507,266 @@ export interface ExamResultResponse {
   stations: StationResultSummary[];
   integritySignalsCount: number;
 }
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 6: Smart Learning Hub & Medical Education Workspace Types
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface MedicalSubject {
+  id: string;
+  name: string;
+  code: string;
+  category: 'PRE_CLINICAL' | 'PARA_CLINICAL' | 'CLINICAL' | 'OTHER';
+  description?: string;
+  displayOrder: number;
+  isActive: boolean;
+}
+
+export type MaterialProcessingStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
+
+export interface StudyMaterial {
+  id: string;
+  userId: string;
+  title: string;
+  originalFileName: string;
+  fileType: string;
+  fileSize: number;
+  subject: string;
+  topic?: string;
+  subtopic?: string;
+  tags?: string;
+  description?: string;
+  extractedText?: string;
+  processingStatus: MaterialProcessingStatus;
+  processingError?: string;
+  reviewStatus?: 'PENDING' | 'REVIEWED' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  updatedAt: string;
+  _count?: {
+    notes?: number;
+    flashcardDecks?: number;
+    questionBanks?: number;
+  };
+}
+
+export type NoteSourceType = 'PERSONAL' | 'AI_GENERATED' | 'MATERIAL_BASED';
+
+export interface StudyNote {
+  id: string;
+  userId: string;
+  materialId?: string | null;
+  material?: {
+    id: string;
+    title: string;
+    subject: string;
+  } | null;
+  title: string;
+  content: string;
+  subject: string;
+  topic?: string;
+  tags?: string;
+  sourceType: NoteSourceType;
+  isPinned: boolean;
+  isFavorite: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TutorMode = 'EXPLAIN' | 'TEACH' | 'QUIZ_ME' | 'VIVA_ME' | 'REVISE';
+
+export interface TutorMessage {
+  id: string;
+  conversationId: string;
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
+  content: string;
+  sourceReference?: string | null;
+  createdAt: string;
+}
+
+export interface TutorConversation {
+  id: string;
+  userId: string;
+  materialId?: string | null;
+  material?: {
+    id: string;
+    title: string;
+    subject: string;
+  } | null;
+  mode: TutorMode;
+  title: string;
+  messages: TutorMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Flashcard {
+  id: string;
+  deckId: string;
+  question: string;
+  answer: string;
+  explanation?: string | null;
+  sourceReference?: string | null;
+  difficulty: string;
+  reviewStatus?: string;
+  createdAt: string;
+}
+
+export interface FlashcardDeck {
+  id: string;
+  userId: string;
+  materialId?: string | null;
+  material?: {
+    id: string;
+    title: string;
+    subject: string;
+  } | null;
+  title: string;
+  subject: string;
+  topic?: string;
+  description?: string;
+  cards: Flashcard[];
+  _count?: {
+    cards: number;
+    reviews?: number;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MCQQuestion {
+  id: string;
+  questionBankId: string;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctOption?: 'A' | 'B' | 'C' | 'D'; // Hidden during active practice!
+  explanation?: string;
+  difficulty: string;
+  sourceReference?: string | null;
+}
+
+export interface QuestionBank {
+  id: string;
+  userId?: string | null;
+  materialId?: string | null;
+  subject: string;
+  topic?: string;
+  title: string;
+  description?: string;
+  questions: MCQQuestion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MCQAnswerItem {
+  id: string;
+  questionId: string;
+  selectedOption: 'A' | 'B' | 'C' | 'D';
+  isCorrect: boolean;
+  question: MCQQuestion;
+}
+
+export interface MCQPracticeSession {
+  id: string;
+  userId: string;
+  bankId?: string | null;
+  subject: string;
+  topic?: string;
+  mode: string;
+  difficulty: string;
+  totalQuestions: number;
+  correctAnswers: number;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
+  startedAt: string;
+  completedAt?: string | null;
+  questions: MCQQuestion[];
+  answers?: MCQAnswerItem[];
+}
+
+export interface VivaEvaluation {
+  scoreOutOfTen: number;
+  coveredConcepts: string[];
+  missedConcepts: string[];
+  incorrectConcepts: string[];
+  clarityScoreOutOfTen: number;
+  feedback: string;
+  modelAnswerSummary?: string;
+}
+
+export interface VivaQuestion {
+  id: string;
+  sessionId: string;
+  questionNumber: number;
+  question: string;
+  expectedConcepts?: string[]; // Hidden during active viva!
+  sourceReference?: string | null;
+  response?: {
+    id: string;
+    responseText: string;
+    evaluation: VivaEvaluation;
+    createdAt: string;
+  } | null;
+}
+
+export interface VivaSession {
+  id: string;
+  userId: string;
+  materialId?: string | null;
+  subject: string;
+  topic: string;
+  difficulty: string;
+  mode: 'TEXT' | 'VOICE';
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
+  overallScore?: number | null;
+  feedbackSummary?: string | null;
+  startedAt: string;
+  completedAt?: string | null;
+  questions: VivaQuestion[];
+}
+
+export interface StudyProgress {
+  stats: {
+    totalMaterials: number;
+    totalNotes: number;
+    totalDecks: number;
+    totalFlashcardsReviewed: number;
+    mcqSessionsCompleted: number;
+    mcqsAttempted: number;
+    mcqsCorrect: number;
+    mcqAccuracyPercentage: number;
+    vivaSessionsCompleted: number;
+    averageVivaScore: number;
+    totalStudyMinutes: number;
+  };
+  mcqPerformanceBySubject: Record<string, { attempted: number; correct: number; accuracy: number }>;
+  weeklyActivity: Array<{ date: string; minutes: number }>;
+  recentLearning: {
+    materials: StudyMaterial[];
+    notes: StudyNote[];
+    vivas: VivaSession[];
+  };
+  topicsToReview: string[];
+}
+
+export interface LearningHubSummary {
+  stats: {
+    materialsCount: number;
+    notesCount: number;
+    decksCount: number;
+    mcqsAttempted: number;
+    mcqAccuracy: number;
+    vivaCount: number;
+    flashcardsDueCount: number;
+  };
+  recentMaterials: StudyMaterial[];
+  recentNotes: StudyNote[];
+  decks: FlashcardDeck[];
+  continueStudying: {
+    material: StudyMaterial | null;
+    viva: VivaSession | null;
+    mcqSession: MCQPracticeSession | null;
+  };
+}

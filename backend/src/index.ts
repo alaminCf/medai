@@ -10,6 +10,13 @@ import sessionsRoutes from './routes/sessions';
 import usersRoutes from './routes/users';
 import adminRoutes from './routes/admin';
 import examsRoutes from './routes/exams';
+import learningRoutes from "./routes/learning";
+import notesRoutes from "./routes/notes";
+import tutorRoutes from "./routes/tutor";
+import flashcardRoutes from "./routes/flashcards";
+import mcqRoutes from "./routes/mcq";
+import vivaRoutes from "./routes/viva";
+
 
 dotenv.config();
 
@@ -54,6 +61,13 @@ app.use('/api/sessions', sessionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/exams', examsRoutes);
+app.use("/api/learning", learningRoutes);
+app.use("/api/notes", notesRoutes);
+app.use("/api/tutor", tutorRoutes);
+app.use("/api/flashcards", flashcardRoutes);
+app.use("/api/mcq", mcqRoutes);
+app.use("/api/viva", vivaRoutes);
+
 
 // 404 handler
 app.use((_req, res) => {
