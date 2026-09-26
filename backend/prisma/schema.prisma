@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String    @id @default(uuid())
+  name            String
+  email           String    @unique
+  passwordHash    String
+  role            String    @default("student")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions        PracticeSession[]
+
+  @@map("users")
+}
+
+model PatientCase {
+  id                  String             @id @default(uuid())
+  title               String
+  slug                String             @unique
+  description         String?
+  category            String             @default("General Medicine")
+  difficulty          String             @default("beginner")
+  estimatedDuration   Int                @default(20)
+  patientName         String
+  patientAge          Int
+  patientGender       String
+  chiefComplaint      String
+  caseSummary         String?
+  personality         String             @default("calm")
+  isActive            Boolean            @default(true)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  clinicalData        PatientCaseClinicalData?
+  sessions            PracticeSession[]
+
+  @@map("patient_cases")
+}
+
+model PatientCaseClinicalData {
+  id                  String      @id @default(uuid())
+  patientCaseId       String      @unique
+  patientCase         PatientCase @relation(fields: [patientCaseId], references: [id], onDelete: Cascade)
+
+  medicalHistory      String?
+  medicationHistory   String?
+  allergyHistory      String?
+  familyHistory       String?
+  socialHistory       String?
+  symptomDetails      String?
+  redFlags            String?
+  hiddenDiagnosis     String?
+  expectedHistory     String?
+  learningObjectives  String?
+
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@map("patient_case_clinical_data")
+}
+
+model PracticeSession {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientCaseId   String
+  patientCase     PatientCase   @relation(fields: [patientCaseId], references: [id])
+  status          String        @default("active")
+  startedAt       DateTime      @default(now())
+  endedAt         DateTime?
+  duration        Int?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  messages        ConversationMessage[]
+
+  @@map("practice_sessions")
+}
+
+model ConversationMessage {
+  id                String          @id @default(uuid())
+  practiceSessionId String
+  practiceSession   PracticeSession @relation(fields: [practiceSessionId], references: [id], onDelete: Cascade)
+  sender            String
+  message           String
+  timestamp         DateTime        @default(now())
+
+  @@map("conversation_messages")
+}
