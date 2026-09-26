@@ -20,6 +20,10 @@ import ClinicalEvaluationPage from './pages/ClinicalEvaluationPage';
 import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import ExamHubPage from "./pages/ExamHubPage";
+import OSCEStationPage from "./pages/OSCEStationPage";
+import OSCEResultPage from "./pages/OSCEResultPage";
+
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -71,6 +75,12 @@ export default function App() {
         <Route path="/history/:sessionId" element={<SessionTranscriptPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
+
+        {/* Phase 5: OSCE Clinical Exam Routes */}
+        <Route path="/exams" element={<ExamHubPage />} />
+        <Route path="/exams/:id/station/:stationId" element={<OSCEStationPage />} />
+        <Route path="/exams/results/:attemptId" element={<OSCEResultPage />} />
+
         <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
       </Route>
 

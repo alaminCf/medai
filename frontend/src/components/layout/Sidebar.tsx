@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
+  GraduationCap,
   BookOpen,
   History,
   User,
@@ -14,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/cases', icon: BookOpen, label: 'Patient Cases' },
+  { to: '/exams', icon: GraduationCap, label: 'Clinical OSCE' },
   { to: '/history', icon: History, label: 'Session History' },
 ];
 

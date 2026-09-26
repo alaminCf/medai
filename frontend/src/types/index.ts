@@ -372,3 +372,138 @@ export interface ClinicalCaseRubric {
   categories: string[];
   items?: RubricItem[];
 }
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// PHASE 5: OSCE & CLINICAL EXAMINATION TYPES
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface ExamStation {
+  id: string;
+  stationNumber: number;
+  title: string;
+  candidateInstructions: string;
+  timeLimitSeconds: number;
+  passingScore: number;
+  patientCase?: {
+    id: string;
+    patientName?: string;
+    name?: string;
+    patientAge?: number;
+    age?: number;
+    patientGender?: string;
+    gender?: string;
+    avatarId?: string;
+    voiceGender?: string;
+  };
+}
+
+export interface ClinicalExam {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  instructions?: string;
+  durationMinutes: number;
+  stationCount: number;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  status: "draft" | "published" | "archived";
+  voiceRequired: boolean;
+  showLiveTranscript: boolean;
+  fullscreenRequired: boolean;
+  showDetailedFeedback: boolean;
+  allowRetake: boolean;
+  maxAttempts: number;
+  passingPercentage: number;
+  stations?: ExamStation[];
+}
+
+export interface StationAttemptProgress {
+  stationAttemptId: string;
+  stationId: string;
+  stationNumber: number;
+  title: string;
+  candidateInstructions: string;
+  timeLimitSeconds: number;
+  patient?: any;
+  status: "ready" | "active" | "time_up" | "completed" | "evaluated";
+  startedAt?: string;
+  deadline?: string;
+  remainingSeconds: number;
+  isTimeUp: boolean;
+}
+
+export interface ExamAttemptState {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  status: "not_started" | "in_progress" | "completed" | "abandoned";
+  language: "en" | "bn";
+  voiceRequired: boolean;
+  showLiveTranscript: boolean;
+  fullscreenRequired: boolean;
+  stations: StationAttemptProgress[];
+}
+
+export interface StationMessageItem {
+  id: string;
+  sender: "student" | "patient";
+  message: string;
+  emotion?: string;
+  emotionIntensity?: number;
+  timestamp: string;
+}
+
+export interface OSCERubricItemResult {
+  id: string;
+  rubricItemId: string;
+  category: string;
+  criterion: string;
+  status: "achieved" | "partially_achieved" | "not_achieved" | "not_applicable" | "insufficient_evidence";
+  marksAwarded: number;
+  maximumMarks: number;
+  evidence?: string | null;
+  feedback?: string | null;
+  isCritical: boolean;
+  severity: string;
+}
+
+export interface StationResultSummary {
+  stationAttemptId: string;
+  stationId: string;
+  stationNumber: number;
+  title: string;
+  candidateInstructions: string;
+  patient?: any;
+  status: string;
+  score: number;
+  maximumScore: number;
+  percentage: number;
+  outcome: "passed" | "not_passed" | "review_required";
+  summary?: string;
+  strengths: string[];
+  improvements: string[];
+  hasCriticalFailure: boolean;
+  items: OSCERubricItemResult[];
+  transcript: StationMessageItem[];
+}
+
+export interface ExamResultResponse {
+  attemptId: string;
+  examId: string;
+  examTitle: string;
+  examDescription?: string;
+  language: "en" | "bn";
+  startedAt: string;
+  completedAt?: string;
+  totalScore: number;
+  totalMarks: number;
+  percentage: number;
+  outcome: "passed" | "not_passed" | "review_required";
+  passingPercentage: number;
+  allowRetake: boolean;
+  showDetailedFeedback: boolean;
+  domainBreakdown: Record<string, { marksAwarded: number; maximumMarks: number; percentage: number }>;
+  stations: StationResultSummary[];
+  integritySignalsCount: number;
+}

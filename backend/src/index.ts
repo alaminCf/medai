@@ -9,6 +9,7 @@ import casesRoutes from './routes/cases';
 import sessionsRoutes from './routes/sessions';
 import usersRoutes from './routes/users';
 import adminRoutes from './routes/admin';
+import examsRoutes from './routes/exams';
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ app.use('/api/cases', casesRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/exams', examsRoutes);
 
 // 404 handler
 app.use((_req, res) => {

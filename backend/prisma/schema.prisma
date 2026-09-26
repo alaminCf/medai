@@ -17,6 +17,7 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   sessions        PracticeSession[]
+  examAttempts    ExamAttempt[]
 
   @@map("users")
 }
@@ -58,6 +59,7 @@ model PatientCase {
   clinicalData        PatientCaseClinicalData?
   rubric              ClinicalCaseRubric?
   sessions            PracticeSession[]
+  examStations        ExamStation[]
 
   @@map("patient_cases")
 }
@@ -258,4 +260,214 @@ model EvaluationEvidence {
   createdAt                 DateTime            @default(now())
 
   @@map("evaluation_evidences")
+}
+
+// ==========================================
+// PHASE 5: OSCE & CLINICAL EXAMINATION MODE
+// ==========================================
+
+model ClinicalExam {
+  id                    String        @id @default(uuid())
+  title                 String
+  slug                  String        @unique
+  description           String?
+  instructions          String?       // General exam instructions / rules
+  durationMinutes       Int           @default(30)
+  stationCount          Int           @default(5)
+  difficulty            String        @default("intermediate") // "beginner", "intermediate", "advanced"
+  status                String        @default("published") // "draft", "published", "archived"
+  
+  // Exam policy configurations
+  voiceRequired         Boolean       @default(false)
+  showLiveTranscript    Boolean       @default(false)
+  fullscreenRequired    Boolean       @default(false)
+  showDetailedFeedback  Boolean       @default(true)
+  allowRetake           Boolean       @default(true)
+  maxAttempts           Int?          @default(3)
+  passingPercentage     Float         @default(60.0)
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  stations              ExamStation[]
+  attempts              ExamAttempt[]
+
+  @@map("clinical_exams")
+}
+
+model ExamStation {
+  id                    String        @id @default(uuid())
+  clinicalExamId        String
+  clinicalExam          ClinicalExam  @relation(fields: [clinicalExamId], references: [id], onDelete: Cascade)
+  patientCaseId         String
+  patientCase           PatientCase   @relation(fields: [patientCaseId], references: [id])
+  stationNumber         Int
+  title                 String        // e.g. "Station 1: Chest Pain — Focused History"
+  instructions          String?       // Detailed station background (examiner view)
+  candidateInstructions String        // Displayed to student outside/inside station
+  timeLimitSeconds      Int           @default(360) // e.g. 6 minutes (360s)
+  passingScore          Float         @default(12.0)
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  osceRubric            OSCERubric?
+  stationAttempts       StationAttempt[]
+
+  @@map("exam_stations")
+}
+
+model OSCERubric {
+  id                    String            @id @default(uuid())
+  stationId             String            @unique
+  station               ExamStation       @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  title                 String            @default("Station OSCE Marking Scheme")
+  totalMarks            Float             @default(20.0)
+  passingMarks          Float             @default(12.0)
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  items                 OSCERubricItem[]
+
+  @@map("osce_rubrics")
+}
+
+model OSCERubricItem {
+  id                    String            @id @default(uuid())
+  rubricId              String
+  rubric                OSCERubric        @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+  category              String            // e.g. "History Taking", "Communication", "Red Flags", "Clinical Reasoning"
+  criterion             String            // e.g. "Identifies pain onset and temporal progression"
+  description           String?
+  intent                String?           // e.g. "pain_onset_duration"
+  marks                 Float             @default(1.0)
+  required              Boolean           @default(true)
+  isCritical            Boolean           @default(false) // Critical safety fail item
+  severity              String            @default("important") // "critical", "important", "supplementary"
+
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  evaluationItems       OSCEEvaluationItem[]
+
+  @@map("osce_rubric_items")
+}
+
+model ExamAttempt {
+  id                    String                @id @default(uuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clinicalExamId        String
+  clinicalExam          ClinicalExam          @relation(fields: [clinicalExamId], references: [id], onDelete: Cascade)
+  attemptNumber         Int                   @default(1)
+  language              String                @default("en") // "en" | "bn"
+  status                String                @default("not_started") // "not_started", "in_progress", "completed", "abandoned"
+  startedAt             DateTime              @default(now())
+  completedAt           DateTime?
+  
+  totalScore            Float?
+  totalMarks            Float?
+  percentage            Float?
+  outcome               String?               // "passed", "not_passed", "review_required"
+
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  stationAttempts       StationAttempt[]
+  integrityEvents       ExamIntegrityEvent[]
+
+  @@map("exam_attempts")
+}
+
+model StationAttempt {
+  id                    String                @id @default(uuid())
+  examAttemptId         String
+  examAttempt           ExamAttempt           @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
+  stationId             String
+  station               ExamStation           @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  status                String                @default("ready") // "ready", "active", "time_up", "completed", "evaluated"
+  startedAt             DateTime?
+  deadline              DateTime?             // Authoritative server deadline
+  completedAt           DateTime?
+  
+  score                 Float?
+  maximumScore          Float?
+  percentage            Float?
+  outcome               String?               // "passed", "not_passed", "review_required"
+
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  messages              StationMessage[]
+  evaluation            OSCEEvaluation?
+
+  @@map("station_attempts")
+}
+
+model StationMessage {
+  id                    String                @id @default(uuid())
+  stationAttemptId      String
+  stationAttempt        StationAttempt        @relation(fields: [stationAttemptId], references: [id], onDelete: Cascade)
+  sender                String                // "student" | "patient"
+  message               String
+  messageType           String                @default("voice") // "voice" | "text"
+  audioUrl              String?
+  transcription         String?
+  emotion               String?
+  emotionIntensity      Float?
+  detectedCategory      String?
+  detectedIntent        String?
+  timestamp             DateTime              @default(now())
+
+  @@map("station_messages")
+}
+
+model OSCEEvaluation {
+  id                    String                @id @default(uuid())
+  stationAttemptId      String                @unique
+  stationAttempt        StationAttempt        @relation(fields: [stationAttemptId], references: [id], onDelete: Cascade)
+  summary               String
+  strengths             String?               // JSON array of strings
+  improvements          String?               // JSON array of strings
+  score                 Float
+  totalMarks            Float
+  percentage            Float
+  hasCriticalFailure    Boolean               @default(false)
+
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  items                 OSCEEvaluationItem[]
+
+  @@map("osce_evaluations")
+}
+
+model OSCEEvaluationItem {
+  id                    String                @id @default(uuid())
+  osceEvaluationId      String
+  osceEvaluation        OSCEEvaluation        @relation(fields: [osceEvaluationId], references: [id], onDelete: Cascade)
+  rubricItemId          String
+  rubricItem            OSCERubricItem        @relation(fields: [rubricItemId], references: [id], onDelete: Cascade)
+  status                String                // "achieved", "partially_achieved", "not_achieved", "not_applicable", "insufficient_evidence"
+  marksAwarded          Float
+  maximumMarks          Float
+  evidence              String?               // Exact quote from consultation
+  feedback              String?
+
+  createdAt             DateTime              @default(now())
+
+  @@map("osce_evaluation_items")
+}
+
+model ExamIntegrityEvent {
+  id                    String                @id @default(uuid())
+  examAttemptId         String
+  examAttempt           ExamAttempt           @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
+  stationAttemptId      String?
+  eventType             String                // "tab_hidden", "tab_visible", "fullscreen_entered", "fullscreen_exited", "microphone_disabled", "microphone_enabled", "connection_lost", "connection_restored"
+  metadata              String?               // JSON string
+  timestamp             DateTime              @default(now())
+
+  @@map("exam_integrity_events")
 }

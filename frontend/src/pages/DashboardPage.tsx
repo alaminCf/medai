@@ -74,6 +74,30 @@ export default function DashboardPage() {
         )}
       </div>
 
+      
+      {/* Phase 5 OSCE Exam Banner */}
+      <div className="card p-5 mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-navy-950 via-slate-900 to-indigo-950 border border-slate-800 text-white rounded-2xl shadow-md">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider bg-emerald-400 text-slate-950 rounded-full">
+              New: Exam Mode
+            </span>
+            <span className="text-xs text-slate-400 font-medium">5-Station OSCE Clinical Simulation</span>
+          </div>
+          <p className="font-bold text-white text-base">Enter Clinical Examination (OSCE)</p>
+          <p className="text-slate-300 text-xs max-w-xl">
+            Test your focused clinical history taking under formal exam conditions. Server-authoritative 6-minute station timers, no hints, and deterministic rubric marking.
+          </p>
+        </div>
+        <Link
+          to="/exams"
+          className="px-5 py-2.5 bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-extrabold rounded-xl flex items-center justify-center gap-2 transition-all flex-shrink-0 shadow-lg shadow-emerald-400/20 active:scale-98"
+        >
+          <span>Go to Exam Hub</span>
+          <ArrowRight className="w-4 h-4 stroke-[3]" />
+        </Link>
+      </div>
+
       {/* Quick action */}
       <div className="card p-5 mb-8 flex items-center justify-between gap-4 bg-navy-900 border-navy-900">
         <div>
