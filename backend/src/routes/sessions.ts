@@ -13,7 +13,7 @@ const upload = multer({
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max for audio
 });
 
-// Start a new practice session (Phase 2: accepts language and voiceEnabled)
+// Start a new practice session (Phase 2 & Phase 3: accepts language, voiceEnabled, avatarEnabled)
 router.post(
   '/start',
   authenticate,
@@ -21,6 +21,7 @@ router.post(
     body('caseId').isUUID().withMessage('Valid case ID required'),
     body('language').optional().isIn(['en', 'bn']).withMessage('Language must be "en" or "bn"'),
     body('voiceEnabled').optional().isBoolean().withMessage('voiceEnabled must be a boolean'),
+    body('avatarEnabled').optional().isBoolean().withMessage('avatarEnabled must be a boolean'),
   ],
   async (req: AuthRequest, res: Response): Promise<void> => {
     const errors = validationResult(req);
@@ -29,7 +30,12 @@ router.post(
       return;
     }
 
-    const { caseId, language = 'en', voiceEnabled = true } = req.body;
+    const {
+      caseId,
+      language = 'en',
+      voiceEnabled = true,
+      avatarEnabled = true,
+    } = req.body;
     const userId = req.user!.id;
 
     try {
@@ -49,6 +55,11 @@ router.post(
           voiceProvider: true,
           voiceId: true,
           speakingSpeed: true,
+          avatarProvider: true,
+          avatarId: true,
+          avatarGender: true,
+          avatarAgeGroup: true,
+          avatarStyle: true,
         },
       });
 
@@ -57,7 +68,7 @@ router.post(
         return;
       }
 
-      // Create session with Phase 2 voice/language settings
+      // Create session with Phase 2 voice & Phase 3 avatar settings
       const session = await prisma.practiceSession.create({
         data: {
           userId,
@@ -66,6 +77,9 @@ router.post(
           language,
           voiceEnabled,
           voiceProvider: patientCase.voiceProvider,
+          avatarEnabled,
+          avatarProvider: patientCase.avatarProvider,
+          avatarId: patientCase.avatarId,
         },
         include: {
           patientCase: {
@@ -81,6 +95,11 @@ router.post(
               voiceProvider: true,
               voiceId: true,
               speakingSpeed: true,
+              avatarProvider: true,
+              avatarId: true,
+              avatarGender: true,
+              avatarAgeGroup: true,
+              avatarStyle: true,
             },
           },
         },
@@ -99,6 +118,8 @@ router.post(
           sender: 'patient',
           message: openingText,
           messageType: voiceEnabled ? 'voice' : 'text',
+          emotion: 'concerned',
+          emotionIntensity: 0.35,
         },
       });
 
@@ -209,7 +230,48 @@ router.post(
   }
 );
 
-// Send a message in an active session (supports both text and voice message types)
+// Phase 3: Avatar session configuration endpoint (secure token generation)
+router.post(
+  '/:sessionId/avatar/session',
+  authenticate,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const { sessionId } = req.params;
+    const userId = req.user!.id;
+
+    try {
+      const session = await prisma.practiceSession.findUnique({
+        where: { id: sessionId },
+        include: { patientCase: true },
+      });
+
+      if (!session) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+      if (session.userId !== userId) {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+
+      const pc = session.patientCase;
+
+      res.json({
+        avatarProvider: session.avatarProvider || pc.avatarProvider || 'webgl-3d',
+        avatarId: session.avatarId || pc.avatarId || 'default-patient',
+        avatarGender: pc.avatarGender || (pc.patientGender.toLowerCase().includes('female') ? 'female' : 'male'),
+        avatarAgeGroup: pc.avatarAgeGroup || (pc.patientAge < 30 ? 'young-adult' : pc.patientAge < 60 ? 'middle-aged' : 'elderly'),
+        avatarStyle: pc.avatarStyle || 'realistic',
+        patientName: pc.patientName,
+        status: 'ready',
+      });
+    } catch (error) {
+      console.error('Avatar session error:', error);
+      res.status(500).json({ error: 'Failed to initialize avatar session' });
+    }
+  }
+);
+
+// Send a message in an active session (supports text, voice, and emotion metadata)
 router.post(
   '/:sessionId/message',
   authenticate,
@@ -301,20 +363,22 @@ router.post(
         // hiddenDiagnosis and redFlags are NEVER passed to the AI context
       };
 
-      // Generate AI patient response
+      // Generate AI patient response with Emotion Analysis
       const aiResponse = await aiPatientEngine.generatePatientResponse(
         patientContext,
         conversationHistory,
         message.trim()
       );
 
-      // Save patient response
+      // Save patient response with Phase 3 emotion metadata
       const patientMsg = await prisma.conversationMessage.create({
         data: {
           practiceSessionId: sessionId,
           sender: 'patient',
           message: aiResponse.message,
           messageType: activeMessageType,
+          emotion: aiResponse.emotion,
+          emotionIntensity: aiResponse.intensity,
         },
       });
 
@@ -325,12 +389,21 @@ router.post(
         studentMessage: studentMsg,
         patientMessage: patientMsg,
         provider: aiResponse.provider,
+        emotion: aiResponse.emotion,
+        intensity: aiResponse.intensity,
         hasBackendTTS,
         language: session.language,
         voiceConfig: {
           voiceId: caseCtx.voiceId,
           voiceGender: caseCtx.voiceGender,
           speakingSpeed: caseCtx.speakingSpeed,
+        },
+        avatarConfig: {
+          avatarProvider: session.avatarProvider || caseCtx.avatarProvider,
+          avatarId: session.avatarId || caseCtx.avatarId,
+          avatarGender: caseCtx.avatarGender,
+          avatarAgeGroup: caseCtx.avatarAgeGroup,
+          avatarStyle: caseCtx.avatarStyle,
         },
       });
     } catch (error) {
@@ -423,6 +496,11 @@ router.get('/:sessionId', authenticate, async (req: AuthRequest, res: Response):
             voiceId: true,
             voiceGender: true,
             speakingSpeed: true,
+            avatarProvider: true,
+            avatarId: true,
+            avatarGender: true,
+            avatarAgeGroup: true,
+            avatarStyle: true,
           },
         },
         messages: {
@@ -434,6 +512,8 @@ router.get('/:sessionId', authenticate, async (req: AuthRequest, res: Response):
             messageType: true,
             transcription: true,
             audioUrl: true,
+            emotion: true,
+            emotionIntensity: true,
             timestamp: true,
           },
         },
@@ -473,6 +553,9 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response): Promise<v
             patientGender: true,
             difficulty: true,
             category: true,
+            avatarProvider: true,
+            avatarGender: true,
+            avatarAgeGroup: true,
           },
         },
         _count: {

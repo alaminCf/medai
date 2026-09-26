@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding database with Phase 3 realistic avatar profiles...');
 
   // Seed demo student and admin users
   const studentPasswordHash = await bcrypt.hash('Student123!', 10);
@@ -44,6 +44,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'anxious',
       speakingSpeed: 1.0,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'rahim-male-52',
+      avatarGender: 'male',
+      avatarAgeGroup: 'middle-aged',
+      avatarStyle: 'realistic',
     },
     create: {
       title: 'Chest Pain',
@@ -64,6 +69,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'anxious',
       speakingSpeed: 1.0,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'rahim-male-52',
+      avatarGender: 'male',
+      avatarAgeGroup: 'middle-aged',
+      avatarStyle: 'realistic',
       isActive: true,
       clinicalData: {
         create: {
@@ -92,6 +102,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'quiet',
       speakingSpeed: 0.95,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'fatima-female-28',
+      avatarGender: 'female',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
     },
     create: {
       title: 'Fever and Malaise',
@@ -112,6 +127,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'quiet',
       speakingSpeed: 0.95,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'fatima-female-28',
+      avatarGender: 'female',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
       isActive: true,
       clinicalData: {
         create: {
@@ -140,6 +160,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'talkative',
       speakingSpeed: 1.05,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'tanvir-male-34',
+      avatarGender: 'male',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
     },
     create: {
       title: 'Recurrent Headache',
@@ -160,6 +185,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'talkative',
       speakingSpeed: 1.05,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'tanvir-male-34',
+      avatarGender: 'male',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
       isActive: true,
       clinicalData: {
         create: {
@@ -188,6 +218,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'anxious',
       speakingSpeed: 1.0,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'nusrat-female-22',
+      avatarGender: 'female',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
     },
     create: {
       title: 'Acute Abdominal Pain',
@@ -208,6 +243,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'anxious',
       speakingSpeed: 1.0,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'nusrat-female-22',
+      avatarGender: 'female',
+      avatarAgeGroup: 'young-adult',
+      avatarStyle: 'realistic',
       isActive: true,
       clinicalData: {
         create: {
@@ -236,6 +276,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'confused',
       speakingSpeed: 0.9,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'abdul-male-68',
+      avatarGender: 'male',
+      avatarAgeGroup: 'elderly',
+      avatarStyle: 'realistic',
     },
     create: {
       title: 'Shortness of Breath',
@@ -256,6 +301,11 @@ async function main() {
       voiceLanguage: 'en',
       speakingStyle: 'confused',
       speakingSpeed: 0.9,
+      avatarProvider: 'webgl-3d',
+      avatarId: 'abdul-male-68',
+      avatarGender: 'male',
+      avatarAgeGroup: 'elderly',
+      avatarStyle: 'realistic',
       isActive: true,
       clinicalData: {
         create: {
@@ -274,7 +324,7 @@ async function main() {
     },
   });
 
-  console.log('✅ Seeded patient cases with voice profiles:', [case1, case2, case3, case4, case5].map(c => c.title).join(', '));
+  console.log('✅ Seeded patient cases with Phase 3 avatar profiles:', [case1, case2, case3, case4, case5].map(c => c.title).join(', '));
   console.log('🎉 Database seeding complete!');
 }
 

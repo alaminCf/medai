@@ -4,11 +4,14 @@ import type {
   ConversationMessage,
   ConsultationLanguage,
   MessageType,
+  PatientEmotion,
+  AvatarConfig,
 } from '../types';
 
 export interface StartSessionOptions {
   language?: ConsultationLanguage;
   voiceEnabled?: boolean;
+  avatarEnabled?: boolean;
 }
 
 export interface SendMessagePayload {
@@ -22,6 +25,8 @@ export interface SendMessageResponse {
   studentMessage: ConversationMessage;
   patientMessage: ConversationMessage;
   provider: string;
+  emotion?: PatientEmotion;
+  intensity?: number;
   hasBackendTTS?: boolean;
   language?: ConsultationLanguage;
   voiceConfig?: {
@@ -29,6 +34,7 @@ export interface SendMessageResponse {
     voiceGender?: string;
     speakingSpeed?: number;
   };
+  avatarConfig?: AvatarConfig;
 }
 
 export const sessionsService = {
@@ -40,6 +46,7 @@ export const sessionsService = {
       caseId,
       language: options?.language || 'en',
       voiceEnabled: options?.voiceEnabled !== false,
+      avatarEnabled: options?.avatarEnabled !== false,
     });
     return data;
   },
@@ -50,6 +57,11 @@ export const sessionsService = {
   ): Promise<SendMessageResponse> {
     const body = typeof payload === 'string' ? { message: payload } : payload;
     const { data } = await api.post<SendMessageResponse>(`/sessions/${sessionId}/message`, body);
+    return data;
+  },
+
+  async getAvatarSession(sessionId: string): Promise<AvatarConfig> {
+    const { data } = await api.post<AvatarConfig>(`/sessions/${sessionId}/avatar/session`);
     return data;
   },
 

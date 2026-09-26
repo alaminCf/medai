@@ -45,6 +45,13 @@ model PatientCase {
   speakingStyle       String             @default("natural")
   speakingSpeed       Float              @default(1.0)
 
+  // Phase 3: Patient Realistic AI Avatar Profile
+  avatarProvider      String             @default("webgl-3d")
+  avatarId            String?
+  avatarGender        String?
+  avatarAgeGroup      String?
+  avatarStyle         String             @default("realistic")
+
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -89,6 +96,12 @@ model PracticeSession {
   voiceEnabled    Boolean       @default(true)
   voiceProvider   String?
 
+  // Phase 3: Session Avatar Settings
+  avatarEnabled   Boolean       @default(true)
+  avatarProvider  String?
+  avatarId        String?
+  avatarSessionId String?
+
   startedAt       DateTime      @default(now())
   endedAt         DateTime?
   duration        Int?
@@ -111,6 +124,10 @@ model ConversationMessage {
   messageType       String          @default("text")
   audioUrl          String?
   transcription     String?
+
+  // Phase 3: Emotion and Avatar metadata
+  emotion           String?
+  emotionIntensity  Float?
 
   timestamp         DateTime        @default(now())
 

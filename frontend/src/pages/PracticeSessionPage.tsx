@@ -3,12 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { sessionsService } from '../services/sessionsService';
 import speechRecognitionService from '../services/speechRecognitionService';
 import textToSpeechService from '../services/textToSpeechService';
+import PatientAvatarCanvas from '../components/avatar/PatientAvatarCanvas';
 import type {
   PracticeSession,
   ConversationMessage,
   VoiceState,
+  AvatarState,
   ConsultationMode,
   ConsultationLanguage,
+  PatientEmotion,
 } from '../types';
 import { formatDuration } from '../utils/formatters';
 import {
@@ -16,18 +19,20 @@ import {
   Send,
   AlertCircle,
   X,
-  User,
   Volume2,
   VolumeX,
   RotateCcw,
   Square,
   Mic,
-  
   MessageSquare,
   Keyboard,
   Globe,
   Radio,
-  CheckCircle2,
+  Maximize2,
+  Minimize2,
+  ChevronDown,
+  ChevronUp,
+  
 } from 'lucide-react';
 import { getApiError } from '../services/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -45,13 +50,21 @@ export default function PracticeSessionPage() {
   const [error, setError] = useState('');
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
-  // Phase 2: Voice & Consultation Mode State
+  // Phase 2 & 3: Consultation Mode, Voice, and Avatar State
   const [mode, setMode] = useState<ConsultationMode>('voice');
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+  const [avatarState, setAvatarState] = useState<AvatarState>('idle');
+  const [currentEmotion, setCurrentEmotion] = useState<PatientEmotion>('neutral');
+  const [emotionIntensity, setEmotionIntensity] = useState(0.35);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [voiceFallbackNotice, setVoiceFallbackNotice] = useState('');
   const [hasBackendTTS, setHasBackendTTS] = useState(false);
+  const [activeSpeakingText, setActiveSpeakingText] = useState('');
+
+  // UI Modes
+  const [focusMode, setFocusMode] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(true);
 
   // Consultation Timer
   const [elapsed, setElapsed] = useState(0);
@@ -73,12 +86,24 @@ export default function PracticeSessionPage() {
           setMode(sess.voiceEnabled ? 'voice' : 'text');
         }
 
-        // Play initial greeting if in voice mode and messages exist
+        // Set initial patient emotion based on case personality
+        if (sess.patientCase.personality === 'anxious') {
+          setCurrentEmotion('anxious');
+          setEmotionIntensity(0.5);
+        } else if (sess.patientCase.personality === 'calm') {
+          setCurrentEmotion('calm');
+          setEmotionIntensity(0.3);
+        } else {
+          setCurrentEmotion('concerned');
+          setEmotionIntensity(0.35);
+        }
+
+        // Play initial greeting
         const opening = sess.messages?.find((m) => m.sender === 'patient');
         if (opening && sess.voiceEnabled && !textToSpeechService.isMuted()) {
           setTimeout(() => {
             playPatientVoice(opening.message, sess.language || 'en', sess);
-          }, 600);
+          }, 800);
         }
       })
       .catch((err) => setError(getApiError(err)))
@@ -91,7 +116,7 @@ export default function PracticeSessionPage() {
     };
   }, [sessionId]);
 
-  // Session duration timer (continuous throughout the consultation)
+  // Session duration timer
   useEffect(() => {
     if (!session || session.status !== 'active') return;
 
@@ -107,16 +132,18 @@ export default function PracticeSessionPage() {
     };
   }, [session]);
 
-  // Auto-scroll transcript to bottom
+  // Auto-scroll transcript
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, interimTranscript, isSending]);
 
-  // Voice playback helper (guarantees interruption safety & Phase 3 events)
+  // Voice & Avatar synchronization helper
   const playPatientVoice = useCallback(
     (text: string, language: ConsultationLanguage, sessObj?: PracticeSession | null) => {
       const activeSession = sessObj || session;
       const pc = activeSession?.patientCase;
+
+      setActiveSpeakingText(text);
 
       textToSpeechService.play(text, {
         sessionId: activeSession?.id,
@@ -126,19 +153,31 @@ export default function PracticeSessionPage() {
         speed: pc?.speakingSpeed || 1.0,
         useBackendTTS: hasBackendTTS,
         events: {
-          onResponseStarted: () => setVoiceState('speaking'),
-          onAudioPlaying: () => setVoiceState('speaking'),
-          onAudioFinished: () => setVoiceState('idle'),
+          onResponseStarted: () => {
+            setVoiceState('speaking');
+            setAvatarState('speaking');
+          },
+          onAudioPlaying: () => {
+            setVoiceState('speaking');
+            setAvatarState('speaking');
+          },
+          onAudioFinished: () => {
+            setVoiceState('idle');
+            setAvatarState('idle');
+            setActiveSpeakingText('');
+          },
         },
       });
     },
     [session, hasBackendTTS]
   );
 
-  // Stop current patient voice
+  // Stop current patient voice & reset avatar to idle
   const handleStopAudio = () => {
     textToSpeechService.stop();
     setVoiceState('idle');
+    setAvatarState('idle');
+    setActiveSpeakingText('');
   };
 
   // Replay last patient response
@@ -154,7 +193,7 @@ export default function PracticeSessionPage() {
     const newMuted = textToSpeechService.toggleMute();
     setIsMuted(newMuted);
     if (newMuted) {
-      setVoiceState('idle');
+      handleStopAudio();
     }
   };
 
@@ -162,30 +201,31 @@ export default function PracticeSessionPage() {
   const handleToggleMode = () => {
     if (mode === 'voice') {
       speechRecognitionService.abortListening();
-      textToSpeechService.stop();
-      setVoiceState('idle');
+      handleStopAudio();
       setMode('text');
     } else {
       setMode('voice');
     }
   };
 
-  // Start Speech-to-Text Listening
+  // Start Speech-to-Text Listening (Avatar enters listening state)
   const startListening = () => {
     if (!session || isSending) return;
 
     // Interruption handling: Stop patient speech immediately
-    textToSpeechService.stop();
+    handleStopAudio();
 
     setError('');
     setInterimTranscript('');
     setVoiceState('listening');
+    setAvatarState('listening');
 
     const lang = session.language || 'en';
 
     speechRecognitionService.startListening(lang, {
       onStart: () => {
         setVoiceState('listening');
+        setAvatarState('listening');
       },
       onInterimResult: (transcript) => {
         setInterimTranscript(transcript);
@@ -196,20 +236,23 @@ export default function PracticeSessionPage() {
           handleSendVoiceMessage(transcript.trim());
         } else {
           setVoiceState('idle');
+          setAvatarState('idle');
         }
       },
       onError: (friendlyError) => {
         setVoiceState('error');
+        setAvatarState('idle');
         setError(friendlyError);
-        setVoiceFallbackNotice('Voice recognition issue. You can continue talking or switch to text.');
+        setVoiceFallbackNotice('Voice recognition issue. You can continue speaking or switch to text.');
       },
       onEnd: () => {
         setVoiceState((prev) => (prev === 'listening' ? 'idle' : prev));
+        setAvatarState((prev) => (prev === 'listening' ? 'idle' : prev));
       },
     });
   };
 
-  // Stop listening manually (sends what was captured)
+  // Stop listening manually
   const stopListening = () => {
     speechRecognitionService.stopListening();
   };
@@ -220,6 +263,7 @@ export default function PracticeSessionPage() {
 
     setIsSending(true);
     setVoiceState('thinking');
+    setAvatarState('thinking');
     setError('');
 
     try {
@@ -232,11 +276,18 @@ export default function PracticeSessionPage() {
       setMessages((prev) => [...prev, response.studentMessage, response.patientMessage]);
       setHasBackendTTS(!!response.hasBackendTTS);
 
-      // Play patient voice response
+      // Emotion Layer update
+      if (response.emotion) {
+        setCurrentEmotion(response.emotion);
+        setEmotionIntensity(response.intensity || 0.35);
+      }
+
+      // Play patient voice with synchronized avatar lip-sync
       const patientText = response.patientMessage.message;
       playPatientVoice(patientText, session.language || 'en');
     } catch (err) {
       setVoiceState('error');
+      setAvatarState('idle');
       setError(getApiError(err));
       setVoiceFallbackNotice('Failed to generate response. You can try asking again with text.');
     } finally {
@@ -244,7 +295,7 @@ export default function PracticeSessionPage() {
     }
   };
 
-  // Handle Text Message Submission (Phase 1 text consultation fallback)
+  // Handle Text Message Submission
   const handleSendTextMessage = async () => {
     if (!input.trim() || !sessionId || isSending) return;
 
@@ -253,9 +304,9 @@ export default function PracticeSessionPage() {
     setIsSending(true);
     setError('');
 
-    // Stop active audio
-    textToSpeechService.stop();
+    handleStopAudio();
     setVoiceState('thinking');
+    setAvatarState('thinking');
 
     try {
       const response = await sessionsService.sendMessage(sessionId, {
@@ -265,14 +316,20 @@ export default function PracticeSessionPage() {
 
       setMessages((prev) => [...prev, response.studentMessage, response.patientMessage]);
 
-      // If voice mode is active, speak the response even if student typed!
+      if (response.emotion) {
+        setCurrentEmotion(response.emotion);
+        setEmotionIntensity(response.intensity || 0.35);
+      }
+
       if (mode === 'voice' && !isMuted) {
         playPatientVoice(response.patientMessage.message, session?.language || 'en');
       } else {
         setVoiceState('idle');
+        setAvatarState('idle');
       }
     } catch (err) {
       setVoiceState('idle');
+      setAvatarState('idle');
       setError(getApiError(err));
     } finally {
       setIsSending(false);
@@ -305,10 +362,11 @@ export default function PracticeSessionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
+      <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-gray-500">Preparing consultation room...</p>
+          <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-semibold text-slate-200">Entering Virtual Clinical Consultation Room...</p>
+          <p className="text-xs text-slate-400">Loading AI digital patient & clinical telemetry</p>
         </div>
       </div>
     );
@@ -331,36 +389,36 @@ export default function PracticeSessionPage() {
   const questionCount = messages.filter((m) => m.sender === 'student').length;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 overflow-hidden">
+    <div className={`flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden ${focusMode ? 'fixed inset-0 z-50' : ''}`}>
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* Top Bar                                                      */}
+      {/* Consultation Header                                         */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <header className="bg-navy-900 text-white px-5 py-3 flex items-center justify-between shadow-md z-20 flex-shrink-0">
+      <header className="bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center justify-between shadow-md z-20 flex-shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowEndConfirm(true)}
-            className="text-xs font-semibold px-2.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+            className="text-xs font-semibold px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors"
           >
-            ← Exit Consultation
+            ← Exit
           </button>
-          <div className="h-4 w-px bg-white/20" />
+          <div className="h-4 w-px bg-slate-700" />
           <div>
-            <h1 className="font-bold text-sm tracking-wide flex items-center gap-2">
+            <h1 className="font-bold text-sm tracking-wide flex items-center gap-2 text-white">
               <span>{pc.patientName}</span>
-              <span className="text-xs px-2 py-0.5 rounded font-medium bg-teal-500/20 text-teal-300 border border-teal-400/30">
+              <span className="text-xs px-2 py-0.5 rounded font-medium bg-teal-500/20 text-teal-300 border border-teal-500/30">
                 {pc.title}
               </span>
             </h1>
-            <p className="text-xs text-navy-300">
+            <p className="text-[11px] text-slate-400">
               {pc.patientAge}y · {pc.patientGender} · {pc.category}
             </p>
           </div>
         </div>
 
-        {/* Right tools: Language Badge, Mode Toggle, Audio Mute, Timer, End */}
-        <div className="flex items-center gap-3">
+        {/* Right tools: Language Badge, Mode Toggle, Focus Mode, Audio Mute, Timer, End */}
+        <div className="flex items-center gap-2.5">
           {/* Language Indicator */}
-          <div className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-white/10 text-white font-medium">
+          <div className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium border border-slate-700">
             <Globe className="w-3.5 h-3.5 text-teal-400" />
             <span>{isBangla ? 'বাংলা (BN)' : 'English (EN)'}</span>
           </div>
@@ -371,12 +429,12 @@ export default function PracticeSessionPage() {
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
               mode === 'voice'
                 ? 'bg-teal-600 text-white border-teal-500 shadow-sm'
-                : 'bg-white/10 text-navy-200 border-white/20 hover:bg-white/20'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
-            title="Switch between Voice Mode and Text Mode"
+            title="Toggle Voice / Text Mode"
           >
             {mode === 'voice' ? <Mic className="w-3.5 h-3.5" /> : <Keyboard className="w-3.5 h-3.5" />}
-            <span>{mode === 'voice' ? 'Voice Mode' : 'Text Mode'}</span>
+            <span className="hidden sm:inline">{mode === 'voice' ? 'Voice Mode' : 'Text Mode'}</span>
           </button>
 
           {/* Audio Mute/Unmute */}
@@ -385,7 +443,7 @@ export default function PracticeSessionPage() {
             className={`p-2 rounded-lg border text-xs transition-colors ${
               isMuted
                 ? 'bg-red-500/20 text-red-300 border-red-500/30'
-                : 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
             aria-label={isMuted ? 'Unmute Audio' : 'Mute Audio'}
@@ -393,8 +451,21 @@ export default function PracticeSessionPage() {
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-teal-400" />}
           </button>
 
-          {/* Consultation Timer (continuous across whole interaction) */}
-          <div className="flex items-center gap-1.5 bg-black/30 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-teal-300 border border-teal-500/30">
+          {/* Focus Mode (Fullscreen Toggle) */}
+          <button
+            onClick={() => setFocusMode(!focusMode)}
+            className={`p-2 rounded-lg border text-xs transition-colors ${
+              focusMode
+                ? 'bg-teal-600 text-white border-teal-500'
+                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+            }`}
+            title={focusMode ? 'Exit Focus Mode' : 'Focus Mode (Maximize Avatar)'}
+          >
+            {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+
+          {/* Consultation Timer (Continuous) */}
+          <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-teal-400 border border-teal-500/30">
             <Clock className="w-3.5 h-3.5" />
             <span>{formatDuration(elapsed)}</span>
           </div>
@@ -403,309 +474,94 @@ export default function PracticeSessionPage() {
           {isActive && (
             <button
               onClick={() => setShowEndConfirm(true)}
-              className="text-xs font-bold px-3 py-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg transition-colors shadow-sm"
+              className="text-xs font-bold px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-sm"
             >
-              End Consultation
+              End Session
             </button>
           )}
         </div>
       </header>
 
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* 3-Panel Consultation Layout                                 */}
+      {/* Main Consultation Area                                      */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Panel: Patient Medical Card */}
-        <aside className="hidden lg:flex flex-col w-72 bg-white border-r border-gray-200 p-5 overflow-y-auto scrollbar-thin flex-shrink-0">
-          <div className="text-center pb-5 border-b border-gray-100">
-            {/* Patient Avatar Placeholder */}
-            <div
-              className={`w-20 h-20 rounded-full mx-auto flex items-center justify-center transition-all duration-300 shadow-md ${
-                voiceState === 'listening'
-                  ? 'bg-emerald-100 ring-4 ring-emerald-400 animate-pulse'
-                  : voiceState === 'speaking'
-                  ? 'bg-teal-100 ring-4 ring-teal-400'
-                  : voiceState === 'thinking'
-                  ? 'bg-indigo-100 ring-4 ring-indigo-300 animate-pulse'
-                  : 'bg-navy-50 ring-2 ring-navy-200'
-              }`}
-            >
-              <User
-                className={`w-10 h-10 ${
-                  voiceState === 'listening'
-                    ? 'text-emerald-700'
-                    : voiceState === 'speaking'
-                    ? 'text-teal-700'
-                    : voiceState === 'thinking'
-                    ? 'text-indigo-700'
-                    : 'text-navy-700'
-                }`}
-              />
-            </div>
-            <h2 className="mt-3 font-bold text-gray-900 text-base">{pc.patientName}</h2>
-            <p className="text-xs text-gray-500">
-              {pc.patientAge} years old · {pc.patientGender}
-            </p>
-            <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Simulated Virtual Patient</span>
-            </div>
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Left / Center: Avatar Stage + Controls */}
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-950">
+          {/* Central Realistic 3D Avatar Area */}
+          <div className="flex-1 p-3 sm:p-4 min-h-[300px] flex items-center justify-center relative overflow-hidden">
+            <PatientAvatarCanvas
+              patientCase={pc as any}
+              avatarState={avatarState}
+              emotion={currentEmotion}
+              emotionIntensity={emotionIntensity}
+              speakingText={activeSpeakingText}
+              audioElement={textToSpeechService.getCurrentAudio()}
+              focusMode={focusMode}
+              onToggleFocusMode={() => setFocusMode(!focusMode)}
+              onError={(msg) => setVoiceFallbackNotice(`Avatar notice: ${msg}. Voice consultation continuing.`)}
+            />
           </div>
 
-          <div className="py-4 space-y-4 text-xs">
-            <div>
-              <p className="font-semibold text-gray-400 uppercase tracking-wider text-[11px] mb-1.5">Chief Complaint</p>
-              <div className="bg-amber-50 border border-amber-200/80 rounded-lg p-3 text-amber-900 italic font-medium leading-relaxed">
-                "{pc.chiefComplaint}"
-              </div>
-            </div>
-
-            <div className="space-y-2 border-t border-gray-100 pt-3">
-              <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Category:</span>
-                <span className="font-semibold text-gray-800">{pc.category}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Difficulty:</span>
-                <span className="font-semibold capitalize text-gray-800">{pc.difficulty}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-gray-50">
-                <span className="text-gray-500">Language:</span>
-                <span className="font-semibold text-gray-800">{isBangla ? 'বাংলা' : 'English'}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-gray-500">Questions:</span>
-                <span className="font-semibold text-gray-800">{questionCount} asked</span>
-              </div>
-            </div>
-
-            {/* Structured History Guide for medical students (SOCRATES) */}
-            <div className="bg-blue-50/70 border border-blue-100 rounded-lg p-3 mt-4">
-              <p className="font-bold text-blue-900 text-[11px] uppercase tracking-wide mb-1.5">
-                Clinical Focus Guide
-              </p>
-              <ul className="text-blue-800 space-y-1 text-[11px] leading-tight">
-                <li>• <strong>S</strong>ite & Onset of pain/issue</li>
-                <li>• <strong>C</strong>haracter & Radiation</li>
-                <li>• <strong>A</strong>ssociations & Timing</li>
-                <li>• <strong>E</strong>xacerbating / Relieving</li>
-                <li>• <strong>S</strong>everity & Medical History</li>
-              </ul>
-            </div>
-          </div>
-        </aside>
-
-        {/* ──────────────────────────────────────────────────────────── */}
-        {/* Center Panel — Patient Area + Conversation + Voice Controls */}
-        {/* ──────────────────────────────────────────────────────────── */}
-        <main className="flex-1 flex flex-col bg-gray-50 overflow-hidden relative">
-          {/* Patient Voice Status Header (Consultation Room Screen) */}
-          <section className="bg-white border-b border-gray-200 px-6 py-4 flex-shrink-0 shadow-sm">
-            <div className="max-w-2xl mx-auto flex items-center justify-between">
-              {/* Patient State Indicator */}
-              <div className="flex items-center gap-3.5">
-                {/* Visual Avatar / Status Animation */}
-                <div className="relative">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-300 ${
-                      voiceState === 'listening'
-                        ? 'bg-emerald-500 text-white ring-4 ring-emerald-200 animate-pulse'
-                        : voiceState === 'speaking'
-                        ? 'bg-teal-600 text-white ring-4 ring-teal-200'
-                        : voiceState === 'thinking'
-                        ? 'bg-indigo-600 text-white ring-4 ring-indigo-200'
-                        : 'bg-navy-900 text-white'
-                    }`}
-                  >
-                    {pc.patientName.charAt(0)}
-                  </div>
-                  {/* Subtle live indicator dot */}
-                  <span
-                    className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                      voiceState === 'speaking'
-                        ? 'bg-teal-500'
-                        : voiceState === 'listening'
-                        ? 'bg-emerald-500'
-                        : 'bg-gray-400'
-                    }`}
-                  />
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm">{pc.patientName}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    {/* Status Text & Animation */}
-                    {voiceState === 'listening' ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
-                        <Radio className="w-3.5 h-3.5 animate-pulse" />
-                        <span>Patient is listening to you...</span>
-                      </span>
-                    ) : voiceState === 'thinking' ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600">
-                        <span className="flex gap-0.5">
-                          <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1 h-1 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </span>
-                        <span>Patient is thinking...</span>
-                      </span>
-                    ) : voiceState === 'speaking' ? (
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-600">
-                        {/* Audio Waveform Animation */}
-                        <span className="flex items-center gap-0.5 h-3">
-                          <span className="w-0.5 bg-teal-500 rounded-full animate-pulse h-2" />
-                          <span className="w-0.5 bg-teal-500 rounded-full animate-pulse h-3.5" style={{ animationDelay: '100ms' }} />
-                          <span className="w-0.5 bg-teal-500 rounded-full animate-pulse h-2" style={{ animationDelay: '200ms' }} />
-                          <span className="w-0.5 bg-teal-500 rounded-full animate-pulse h-3" style={{ animationDelay: '150ms' }} />
-                        </span>
-                        <span>Patient is speaking...</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        <span>Ready for your next question</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Patient Speech Quick Controls */}
-              <div className="flex items-center gap-1.5">
-                {voiceState === 'speaking' && (
-                  <button
-                    onClick={handleStopAudio}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                    title="Stop Patient Speech"
-                  >
-                    <Square className="w-3 h-3 text-red-500 fill-red-500" />
-                    <span>Stop</span>
-                  </button>
-                )}
-                <button
-                  onClick={handleReplayAudio}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-                  title="Replay Last Response"
-                >
-                  <RotateCcw className="w-3 h-3 text-teal-600" />
-                  <span className="hidden sm:inline">Replay</span>
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Conversation Transcript Area */}
-          <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4 scrollbar-thin">
-            <div className="max-w-2xl mx-auto space-y-4">
-              {/* Consultation Welcome Notice */}
-              <div className="flex justify-center">
-                <span className="text-xs text-gray-500 bg-white border border-gray-200 px-3 py-1 rounded-full shadow-2xs">
-                  Consultation Room · {isBangla ? 'বাংলা পরামর্শ শুরু হয়েছে' : 'English consultation active'}
-                </span>
-              </div>
-
-              {/* Message Transcript Bubbles */}
-              {messages
-                .filter((m) => m.sender !== 'system')
-                .map((msg) => (
-                  <MessageBubble
-                    key={msg.id}
-                    message={msg}
-                    patientName={pc.patientName}
-                    onPlay={() => playPatientVoice(msg.message, session.language || 'en')}
-                  />
-                ))}
-
-              {/* Real-Time Live Speech Preview (Interim Transcription) */}
-              {interimTranscript && (
-                <div className="flex items-start gap-2.5 flex-row-reverse">
-                  <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
-                    S
-                  </div>
-                  <div className="max-w-[75%]">
-                    <div className="rounded-xl rounded-tr-sm px-4 py-2.5 bg-emerald-50 border border-emerald-200 text-emerald-900 shadow-sm animate-pulse">
-                      <p className="text-xs font-semibold text-emerald-700 mb-0.5 flex items-center gap-1">
-                        <Mic className="w-3 h-3" />
-                        <span>Hearing you speak...</span>
-                      </p>
-                      <p className="text-sm italic">"{interimTranscript}"</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Thinking / Processing indicator */}
-              {isSending && (
-                <div className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 bg-navy-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-navy-800">{pc.patientName.charAt(0)}</span>
-                  </div>
-                  <div className="bg-white rounded-xl rounded-tl-sm px-4 py-3 shadow-card border border-gray-100">
-                    <div className="flex gap-1.5 items-center h-4">
-                      <span className="w-2 h-2 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-teal-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
-
-          {/* Error Notice */}
+          {/* Error / Fallback Banners */}
           {error && (
-            <div className="mx-6 mb-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 flex items-center justify-between text-xs text-red-700">
+            <div className="mx-4 mb-2 bg-red-950/80 border border-red-800 text-red-200 rounded-lg px-4 py-2 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
                 <span>{error}</span>
               </div>
-              <button onClick={() => setError('')} className="text-red-500 hover:text-red-700">
+              <button onClick={() => setError('')} className="text-red-400 hover:text-red-200">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
 
-          {/* Voice Fallback Banner */}
           {voiceFallbackNotice && (
-            <div className="mx-6 mb-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 flex items-center justify-between text-xs text-amber-800">
+            <div className="mx-4 mb-2 bg-amber-950/80 border border-amber-800 text-amber-200 rounded-lg px-4 py-2 flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
                 <span>{voiceFallbackNotice}</span>
               </div>
-              <button onClick={() => setVoiceFallbackNotice('')} className="text-amber-500 hover:text-amber-700">
+              <button onClick={() => setVoiceFallbackNotice('')} className="text-amber-400 hover:text-amber-200">
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
 
-          {/* ──────────────────────────────────────────────────────────── */}
-          {/* Voice & Text Interaction Controls                           */}
-          {/* ──────────────────────────────────────────────────────────── */}
-          <div className="bg-white border-t border-gray-200 p-4 shadow-lg flex-shrink-0">
+          {/* Real-time Interim Transcription Preview ("Hearing you speak...") */}
+          {interimTranscript && (
+            <div className="mx-4 mb-2 p-2.5 rounded-xl bg-emerald-950/80 border border-emerald-700/80 text-emerald-200 text-xs flex items-center gap-2 shadow-lg animate-pulse">
+              <Radio className="w-4 h-4 text-emerald-400 animate-spin" />
+              <div className="flex-1">
+                <span className="font-bold text-emerald-400">Hearing speech: </span>
+                <span className="italic">"{interimTranscript}"</span>
+              </div>
+            </div>
+          )}
+
+          {/* Bottom Interaction Control Bar */}
+          <div className="bg-slate-900 border-t border-slate-800 p-4 z-20 flex-shrink-0">
             <div className="max-w-2xl mx-auto">
-              {/* VOICE MODE CONTROLS */}
               {mode === 'voice' ? (
+                /* VOICE MODE CONTROLS */
                 <div className="flex flex-col items-center gap-3">
-                  {/* Central Large Microphone Button */}
                   <div className="flex items-center justify-center gap-4 w-full">
-                    {/* Secondary: Text Fallback Button */}
+                    {/* Switch to Text Fallback */}
                     <button
                       type="button"
                       onClick={() => setMode('text')}
-                      className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800"
                       title="Switch to Keyboard / Text Mode"
                     >
                       <Keyboard className="w-5 h-5" />
                     </button>
 
-                    {/* Prominent Microphone Interaction Button */}
+                    {/* Central Microphone Button with Animated States */}
                     {voiceState === 'listening' ? (
                       <button
                         type="button"
                         onClick={stopListening}
-                        className="group flex items-center gap-3 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-600/30 transition-all transform hover:scale-105 animate-pulse"
+                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-xl shadow-emerald-600/30 transition-all transform hover:scale-105 animate-pulse"
                       >
                         <Radio className="w-6 h-6 text-white animate-spin" />
                         <span className="text-base tracking-wide">Listening... (Tap to Send)</span>
@@ -722,20 +578,20 @@ export default function PracticeSessionPage() {
                       <button
                         type="button"
                         onClick={handleStopAudio}
-                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-lg shadow-teal-600/30 transition-all transform hover:scale-105"
+                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/30 transition-all transform hover:scale-105"
                       >
                         <Square className="w-5 h-5 fill-white" />
-                        <span className="text-base tracking-wide">Patient is speaking (Tap to Stop)</span>
+                        <span className="text-base tracking-wide">Patient is speaking (Tap to Interrupt)</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={startListening}
                         disabled={isSending || !isActive}
-                        className="group flex items-center gap-3 px-8 py-4 rounded-full bg-navy-900 hover:bg-teal-700 text-white font-bold shadow-lg shadow-navy-900/20 transition-all transform hover:scale-105 disabled:opacity-50"
+                        className="group flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/20 transition-all transform hover:scale-105 disabled:opacity-50"
                       >
                         <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                          <Mic className="w-4 h-4 text-teal-300" />
+                          <Mic className="w-4 h-4 text-white" />
                         </div>
                         <span className="text-base tracking-wide">
                           {isBangla ? 'কথা বলতে চাপুন (Tap to Speak)' : 'Tap to Speak'}
@@ -743,36 +599,47 @@ export default function PracticeSessionPage() {
                       </button>
                     )}
 
-                    {/* Secondary: Replay Voice Button */}
+                    {/* Replay Last Patient Voice */}
                     <button
                       type="button"
                       onClick={handleReplayAudio}
                       disabled={voiceState === 'listening' || isSending}
-                      className="p-3 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-30"
+                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800 disabled:opacity-30"
                       title="Replay Last Patient Voice"
                     >
-                      <RotateCcw className="w-5 h-5 text-teal-600" />
+                      <RotateCcw className="w-5 h-5 text-teal-400" />
                     </button>
                   </div>
 
-                  <p className="text-xs text-gray-400 text-center">
-                    {isBangla
-                      ? 'মাইক্রোফোনে স্বাভাবিক বাংলায় কথা বলুন। রোগী বাংলায় উত্তর দেবে।'
-                      : 'Speak clearly into your microphone. Tap again or pause when finished.'}
-                  </p>
+                  {/* Transcript toggle button */}
+                  <div className="flex items-center gap-4 text-xs text-slate-400">
+                    <span>
+                      {isBangla
+                        ? 'মাইক্রোফোনে স্বাভাবিক বাংলায় কথা বলুন। রোগী বাংলায় উত্তর দেবে।'
+                        : 'Speak naturally to your patient. Avatar lip-syncs with speech in real-time.'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowTranscript(!showTranscript)}
+                      className="text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1"
+                    >
+                      <span>{showTranscript ? 'Hide Transcript' : 'Show Transcript'}</span>
+                      {showTranscript ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               ) : (
-                /* TEXT MODE CONTROLS (Fallback) */
+                /* TEXT MODE FALLBACK */
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between pb-1">
-                    <span className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
-                      <Keyboard className="w-3.5 h-3.5 text-gray-400" />
+                  <div className="flex items-center justify-between pb-1 text-xs">
+                    <span className="font-semibold text-slate-400 flex items-center gap-1.5">
+                      <Keyboard className="w-3.5 h-3.5 text-slate-400" />
                       <span>Text Consultation Mode</span>
                     </span>
                     <button
                       type="button"
                       onClick={() => setMode('voice')}
-                      className="text-xs font-semibold text-teal-700 hover:text-teal-900 flex items-center gap-1"
+                      className="font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-1"
                     >
                       <Mic className="w-3 h-3" />
                       <span>Switch to Voice Mode</span>
@@ -791,13 +658,13 @@ export default function PracticeSessionPage() {
                           : 'Ask the patient a question... (Press Enter to send)'
                       }
                       rows={1}
-                      className="flex-1 input-field resize-none min-h-[44px] max-h-32 py-2.5"
+                      className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 focus:border-teal-500 focus:outline-hidden resize-none min-h-[44px] max-h-32 text-sm"
                       disabled={isSending || !isActive}
                     />
                     <button
                       onClick={handleSendTextMessage}
                       disabled={!input.trim() || isSending || !isActive}
-                      className="w-11 h-11 bg-navy-900 hover:bg-teal-700 text-white rounded-lg flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-50"
+                      className="w-11 h-11 bg-teal-600 hover:bg-teal-500 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-50"
                       title="Send Question"
                     >
                       <Send className="w-4 h-4" />
@@ -809,42 +676,98 @@ export default function PracticeSessionPage() {
           </div>
         </main>
 
-        {/* Right Panel: Consultation Progress & Educational Guidelines */}
-        <aside className="hidden xl:flex flex-col w-64 bg-white border-l border-gray-200 p-5 flex-shrink-0 overflow-y-auto">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
-            Session Metrics
-          </p>
-          <div className="space-y-3">
-            <StatCard label="Elapsed Time" value={formatDuration(elapsed)} icon={<Clock className="w-3.5 h-3.5 text-teal-600" />} />
-            <StatCard label="Doctor Questions" value={String(questionCount)} icon={<MessageSquare className="w-3.5 h-3.5 text-purple-600" />} />
-            <StatCard label="Active Mode" value={mode === 'voice' ? 'Voice' : 'Text'} icon={<Mic className="w-3.5 h-3.5 text-emerald-600" />} />
-          </div>
-
-          <div className="mt-6 pt-5 border-t border-gray-100 space-y-3">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Clinical Safety</p>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              The AI patient responds only within their case parameters and will not reveal diagnostic labels directly.
-            </p>
-            <div className="p-3 bg-amber-50 rounded-lg border border-amber-100 text-amber-900 text-[11px] leading-tight">
-              Practice active listening and ask clarifying open-ended questions.
+        {/* Right Side Panel: Consultation Transcript & Clinical Notes */}
+        {showTranscript && (
+          <aside className="w-80 sm:w-96 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 z-10 transition-all duration-300">
+            {/* Tab Header */}
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-teal-400" />
+                <h3 className="font-bold text-sm text-slate-200">Consultation Transcript</h3>
+              </div>
+              <button
+                onClick={() => setShowTranscript(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-md"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          </div>
-        </aside>
+
+            {/* Transcript Messages List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+              {messages.length === 0 ? (
+                <div className="text-center py-10 text-slate-500 text-xs">
+                  No dialogue recorded yet. Tap the microphone to begin.
+                </div>
+              ) : (
+                messages
+                  .filter((m) => m.sender !== 'system')
+                  .map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex flex-col ${msg.sender === 'student' ? 'items-end' : 'items-start'}`}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1 text-[11px] text-slate-400">
+                        <span className="font-semibold text-slate-300">
+                          {msg.sender === 'student' ? 'You (Doctor)' : pc.patientName}
+                        </span>
+                        <span>·</span>
+                        <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
+                        {msg.emotion && (
+                          <span className="text-[10px] text-teal-400 bg-teal-950/60 border border-teal-800/60 px-1.5 py-0.2 rounded capitalize">
+                            {msg.emotion}
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed max-w-[90%] shadow-sm ${
+                          msg.sender === 'student'
+                            ? 'bg-teal-600 text-white rounded-tr-xs'
+                            : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-tl-xs'
+                        }`}
+                      >
+                        {msg.message}
+                      </div>
+                      {msg.sender === 'patient' && (
+                        <button
+                          onClick={() => playPatientVoice(msg.message, session.language || 'en')}
+                          className="mt-1 text-[10px] font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                        >
+                          <Volume2 className="w-3 h-3" />
+                          <span>Replay audio</span>
+                        </button>
+                      )}
+                    </div>
+                  ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Clinical Focus Guidelines Drawer */}
+            <div className="p-3.5 bg-slate-950/80 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+              <div className="flex items-center justify-between text-slate-300 font-bold mb-1">
+                <span>Clinical History Taking (SOCRATES)</span>
+                <span className="text-teal-400">{questionCount} questions</span>
+              </div>
+              <p>• Site, Onset, Character, Radiation, Associations, Timing, Exacerbating, Severity.</p>
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* End Consultation Confirmation Modal */}
       {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            <h3 className="font-bold text-gray-900 text-lg mb-2">End Consultation?</h3>
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              This will conclude your clinical consultation with {pc.patientName}. You will be able to review the full transcript and conversation history.
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-slate-200">
+            <h3 className="font-bold text-white text-lg mb-2">End Clinical Consultation?</h3>
+            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+              This will conclude your consultation with {pc.patientName}. You will be able to review the full transcript and consultation metrics in Session History.
             </p>
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setShowEndConfirm(false)}
-                className="btn-secondary flex-1 py-2.5"
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
               >
                 Keep Practicing
               </button>
@@ -852,7 +775,7 @@ export default function PracticeSessionPage() {
                 type="button"
                 onClick={handleEnd}
                 disabled={isEnding}
-                className="btn-primary flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white"
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white"
               >
                 {isEnding ? 'Ending...' : 'End Session'}
               </button>
@@ -860,89 +783,6 @@ export default function PracticeSessionPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Message Bubble Component (with Voice Indicators & Audio Replay)
-// ────────────────────────────────────────────────────────────────────────────
-
-function MessageBubble({
-  message,
-  patientName,
-  onPlay,
-}: {
-  message: ConversationMessage;
-  patientName: string;
-  onPlay: () => void;
-}) {
-  const isPatient = message.sender === 'patient';
-  const isVoice = message.messageType === 'voice';
-
-  return (
-    <div className={`flex items-start gap-2.5 ${isPatient ? '' : 'flex-row-reverse'}`}>
-      {/* Avatar Icon */}
-      <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-2xs ${
-          isPatient ? 'bg-navy-900 text-white' : 'bg-teal-600 text-white'
-        }`}
-      >
-        {isPatient ? patientName.charAt(0) : 'Dr'}
-      </div>
-
-      <div className={`max-w-[75%]`}>
-        <div
-          className={`rounded-2xl px-4 py-3 shadow-xs relative ${
-            isPatient
-              ? 'bg-white text-gray-800 border border-gray-200/80 rounded-tl-xs'
-              : 'bg-navy-900 text-white rounded-tr-xs'
-          }`}
-        >
-          {/* Header indicator */}
-          <div className="flex items-center justify-between gap-3 mb-1 text-[11px] opacity-75">
-            <span className="font-semibold">{isPatient ? patientName : 'You (Student Doctor)'}</span>
-            {isVoice && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-black/10">
-                <Mic className="w-2.5 h-2.5" />
-                <span>Voice</span>
-              </span>
-            )}
-          </div>
-
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.message}</p>
-
-          {/* Patient Voice Replay Button */}
-          {isPatient && (
-            <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-end">
-              <button
-                onClick={onPlay}
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-teal-700 hover:text-teal-900 transition-colors"
-                title="Hear patient speak this response"
-              >
-                <Volume2 className="w-3.5 h-3.5" />
-                <span>Listen</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        <p className={`text-[11px] text-gray-400 mt-1 ${isPatient ? 'ml-1' : 'mr-1 text-right'}`}>
-          {formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function StatCard({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) {
-  return (
-    <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-      <div className="flex items-center gap-1.5 mb-1">
-        {icon}
-        <span className="text-xs text-gray-500 font-medium">{label}</span>
-      </div>
-      <p className="text-lg font-bold text-gray-900">{value}</p>
     </div>
   );
 }

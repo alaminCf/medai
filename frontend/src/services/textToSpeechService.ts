@@ -28,6 +28,10 @@ export class TextToSpeechService {
     }
   }
 
+  getCurrentAudio(): HTMLAudioElement | null {
+    return this.currentAudio;
+  }
+
   getCurrentUtterance(): SpeechSynthesisUtterance | null {
     return this.currentUtterance;
   }

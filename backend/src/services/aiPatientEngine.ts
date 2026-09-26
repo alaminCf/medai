@@ -6,6 +6,15 @@ import OpenAI from 'openai';
 
 export type AIProvider = 'openai' | 'anthropic' | 'google' | 'mock';
 
+export type PatientEmotion =
+  | 'neutral'
+  | 'calm'
+  | 'concerned'
+  | 'anxious'
+  | 'sad'
+  | 'confused'
+  | 'relieved';
+
 export interface PatientCaseContext {
   patientName: string;
   patientAge: number;
@@ -29,6 +38,94 @@ export interface ConversationTurn {
 export interface AIPatientResponse {
   message: string;
   provider: AIProvider;
+  emotion: PatientEmotion;
+  intensity: number; // 0.0 to 1.0 (clamped)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Emotion Analysis Layer
+// ────────────────────────────────────────────────────────────────────────────
+
+const ALLOWED_EMOTIONS: PatientEmotion[] = [
+  'neutral',
+  'calm',
+  'concerned',
+  'anxious',
+  'sad',
+  'confused',
+  'relieved',
+];
+
+export function analyzePatientEmotion(
+  text: string,
+  personality: string,
+  query: string
+): { emotion: PatientEmotion; intensity: number } {
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  let emotion: PatientEmotion = 'neutral';
+  let intensity = 0.3;
+
+  // Base emotion from personality
+  if (personality === 'anxious') {
+    emotion = 'anxious';
+    intensity = 0.45;
+  } else if (personality === 'calm') {
+    emotion = 'calm';
+    intensity = 0.3;
+  } else if (personality === 'confused') {
+    emotion = 'confused';
+    intensity = 0.4;
+  }
+
+  // Contextual shifts based on dialogue keywords
+  if (
+    lowerText.includes('worried') ||
+    lowerText.includes('scared') ||
+    lowerText.includes('duhs चिंता') ||
+    lowerText.includes('দুশ্চিন্তা') ||
+    lowerText.includes('ভয়') ||
+    lowerText.includes('বুক ধড়ফড়') ||
+    lowerText.includes('serious')
+  ) {
+    emotion = 'anxious';
+    intensity = Math.max(intensity, 0.55);
+  } else if (
+    lowerText.includes('pain') ||
+    lowerText.includes('hurts') ||
+    lowerText.includes('severe') ||
+    lowerText.includes('কষ্ট') ||
+    lowerText.includes('ব্যথা') ||
+    lowerText.includes('অসহ্য')
+  ) {
+    emotion = 'concerned';
+    intensity = Math.max(intensity, 0.5);
+  } else if (
+    lowerText.includes('not sure') ||
+    lowerText.includes('don\'t know') ||
+    lowerText.includes('নিশ্চিত নই') ||
+    lowerText.includes('মনে নেই')
+  ) {
+    emotion = 'confused';
+    intensity = Math.max(intensity, 0.4);
+  } else if (
+    lowerText.includes('better') ||
+    lowerText.includes('thank you') ||
+    lowerText.includes('ধন্যবাদ') ||
+    lowerText.includes('একটু ভালো')
+  ) {
+    emotion = 'relieved';
+    intensity = 0.35;
+  }
+
+  // Ensure validity and clamping
+  if (!ALLOWED_EMOTIONS.includes(emotion)) {
+    emotion = 'neutral';
+  }
+  const clampedIntensity = Math.max(0.0, Math.min(1.0, intensity));
+
+  return { emotion, intensity: clampedIntensity };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -365,19 +462,37 @@ export class AIPatientEngine {
     const apiKey = process.env.OPENAI_API_KEY;
     const isKeyConfigured = apiKey && !apiKey.includes('placeholder') && apiKey.startsWith('sk-');
 
+    let textResponse = '';
+    let usedProvider: AIProvider = 'mock';
+
     if (this.provider === 'openai' && isKeyConfigured) {
       try {
         const openai = new OpenAIProvider(apiKey);
-        const message = await openai.generateResponse(systemPrompt, conversationHistory, sanitizedMessage);
-        return { message, provider: 'openai' };
+        textResponse = await openai.generateResponse(systemPrompt, conversationHistory, sanitizedMessage);
+        usedProvider = 'openai';
       } catch (err) {
         console.warn('[AI Patient Engine] OpenAI call failed, falling back to clinical simulation:', err);
       }
     }
 
-    // Fallback: Simulated Clinical Patient engine (supports English and Bangla)
-    const simulatedMsg = generateSimulatedPatientResponse(caseContext, conversationHistory, sanitizedMessage);
-    return { message: simulatedMsg, provider: 'mock' };
+    if (!textResponse) {
+      textResponse = generateSimulatedPatientResponse(caseContext, conversationHistory, sanitizedMessage);
+      usedProvider = 'mock';
+    }
+
+    // Phase 3 Emotion Analysis Layer
+    const { emotion, intensity } = analyzePatientEmotion(
+      textResponse,
+      caseContext.personality,
+      sanitizedMessage
+    );
+
+    return {
+      message: textResponse,
+      provider: usedProvider,
+      emotion,
+      intensity,
+    };
   }
 
   getProvider(): AIProvider {

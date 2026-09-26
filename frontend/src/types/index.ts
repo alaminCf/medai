@@ -65,13 +65,20 @@ export interface PatientCase {
   speakingStyle?: string;
   speakingSpeed?: number;
 
+  // Phase 3: Avatar settings
+  avatarProvider?: string;
+  avatarId?: string;
+  avatarGender?: string;
+  avatarAgeGroup?: string;
+  avatarStyle?: string;
+
   clinicalData?: {
     learningObjectives?: string;
   };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Session types
+// Session & Avatar types
 // ────────────────────────────────────────────────────────────────────────────
 
 export type SessionStatus = 'active' | 'completed' | 'abandoned';
@@ -89,6 +96,23 @@ export type VoiceState =
   | 'paused'
   | 'error';
 
+export type AvatarState =
+  | 'idle'
+  | 'listening'
+  | 'thinking'
+  | 'speaking'
+  | 'paused'
+  | 'error';
+
+export type PatientEmotion =
+  | 'neutral'
+  | 'calm'
+  | 'concerned'
+  | 'anxious'
+  | 'sad'
+  | 'confused'
+  | 'relieved';
+
 export interface ConversationMessage {
   id: string;
   sender: MessageSender;
@@ -97,6 +121,8 @@ export interface ConversationMessage {
   messageType?: MessageType;
   audioUrl?: string | null;
   transcription?: string | null;
+  emotion?: PatientEmotion | null;
+  emotionIntensity?: number | null;
 }
 
 export interface PracticeSession {
@@ -114,6 +140,12 @@ export interface PracticeSession {
   voiceEnabled?: boolean;
   voiceProvider?: string | null;
 
+  // Phase 3: Avatar settings
+  avatarEnabled?: boolean;
+  avatarProvider?: string | null;
+  avatarId?: string | null;
+  avatarSessionId?: string | null;
+
   patientCase: {
     id: string;
     title: string;
@@ -124,21 +156,46 @@ export interface PracticeSession {
     difficulty: CaseDifficulty;
     estimatedDuration?: number;
     category?: string;
+    personality?: PatientPersonality;
     voiceProvider?: string;
     voiceId?: string;
     voiceGender?: string;
     speakingSpeed?: number;
+    avatarProvider?: string;
+    avatarId?: string;
+    avatarGender?: string;
+    avatarAgeGroup?: string;
+    avatarStyle?: string;
   };
   messages?: ConversationMessage[];
   _count?: { messages: number };
 }
 
-// Phase 3 Preparation Event Types
+// Avatar Config & Session Types
+export interface AvatarConfig {
+  avatarProvider: string;
+  avatarId: string;
+  avatarGender?: string;
+  avatarAgeGroup?: string;
+  avatarStyle?: string;
+  patientName?: string;
+}
+
+// Phase 3 Viseme & Animation Event Types
+export interface VisemeFrame {
+  jawOpen: number; // 0.0 - 1.0
+  mouthOpen: number;
+  lipPucker: number;
+  lipFunnel: number;
+  mouthWide: number;
+}
+
 export interface PatientVoiceEvents {
   onResponseStarted?: () => void;
   onAudioReady?: (audioUrl: string | Blob) => void;
   onAudioPlaying?: () => void;
   onAudioFinished?: () => void;
+  onAudioNodeReady?: (sourceNode: AudioNode, audioContext: AudioContext) => void;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
