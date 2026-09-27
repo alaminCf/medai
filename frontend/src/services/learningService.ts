@@ -108,6 +108,14 @@ export const learningService = {
   // ────────────────────────────────────────────────────────
   // AI Medical Tutor
   // ────────────────────────────────────────────────────────
+  async getTutorSuggestions(): Promise<{
+    suggestions: Array<{ title: string; prompt: string; category: string; mode: string }>;
+    weakConcepts: string[];
+  }> {
+    const res = await api.get('/tutor/suggestions');
+    return res.data;
+  },
+
   async getTutorConversations(): Promise<TutorConversation[]> {
     const res = await api.get('/tutor/conversations');
     return res.data.conversations;

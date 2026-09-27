@@ -64,8 +64,9 @@ export class LearningAIService {
     materialContext?: string;
     subject?: string;
     topic?: string;
+    weakConcepts?: string[];
   }): Promise<{ reply: string; sourceReference?: string }> {
-    const { userMessage, mode, history, materialContext, subject, topic } = params;
+    const { userMessage, mode, history, materialContext, subject, topic, weakConcepts } = params;
     const openai = this.getOpenAI();
 
     let systemPrompt = `You are the Techboloy Med AI Medical Tutor, an expert academic medical educator dedicated to teaching medical students.
@@ -86,6 +87,14 @@ ${
     : mode === 'VIVA_ME'
     ? '• Mode: VIVA_ME. Conduct an oral board/viva exam. Ask challenging, classical medical viva questions, critique student answers constructively, and probe for missing concepts.'
     : '• Mode: REVISE. Provide bulleted high-yield exam takeaways, mnemonics, and common examiner traps.'
+}
+
+${
+  weakConcepts && weakConcepts.length > 0
+    ? `STUDENT WEAK CONCEPTS CONTEXT:
+The student has recently struggled with: ${weakConcepts.join(', ')}.
+If relevant to their question, gently reinforce these concepts.`
+    : ''
 }
 
 ${
@@ -115,8 +124,8 @@ IMPORTANT RULES FOR UPLOADED MATERIAL:
         const response = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages,
-          temperature: 0.5,
-          max_tokens: 1000,
+          temperature: 0.4,
+          max_tokens: 1200,
         });
 
         const reply = response.choices[0]?.message?.content || 'I am ready to help you with your medical studies.';
@@ -125,17 +134,14 @@ IMPORTANT RULES FOR UPLOADED MATERIAL:
           sourceReference: materialContext ? 'Uploaded Study Document' : undefined,
         };
       } catch (err) {
-        console.warn('OpenAI Tutor call failed, falling back to deterministic tutor response:', err);
+        console.warn('OpenAI Tutor call failed, falling back to smart medical knowledge engine:', err);
       }
     }
 
-    // High-Yield Deterministic Fallback Tutor Logic
-    return this.generateDeterministicTutorReply(userMessage, mode, materialContext);
+    // High-Yield Smart Clinical Medical Knowledge Engine
+    return this.generateSmartMedicalTutorReply(userMessage, mode, materialContext, subject, topic, weakConcepts);
   }
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // 2. AI SUMMARY GENERATOR
-  // ────────────────────────────────────────────────────────────────────────────
   public static async generateSummary(params: {
     materialText: string;
     format: 'Quick Summary' | 'Detailed Summary' | 'Exam Revision' | 'High-Yield Points' | 'Beginner Friendly';
@@ -421,62 +427,415 @@ Evaluate the student's response objectively and return JSON:
   // ────────────────────────────────────────────────────────────────────────────
   // DETERMINISTIC MEDICAL FALLBACK ENGINES
   // ────────────────────────────────────────────────────────────────────────────
-  private static generateDeterministicTutorReply(
+  private static generateSmartMedicalTutorReply(
     userMessage: string,
     mode: string,
-    materialContext?: string
+    materialContext?: string,
+    subject?: string,
+    topic?: string,
+    weakConcepts?: string[]
   ): { reply: string; sourceReference?: string } {
-    const lower = userMessage.toLowerCase();
+    const query = userMessage.toLowerCase();
+    let reply = '';
+    let source = materialContext ? 'Uploaded Study Material' : 'Techboloy Medical Knowledge Engine';
 
-    if (lower.includes('cardiac cycle') || lower.includes('heart sound') || lower.includes('s1') || lower.includes('s2')) {
-      return {
-        reply: `### The Cardiac Cycle & Heart Sounds Breakdown:
-1. **Atrial Systole (0.1s):** Follows the P wave. The atria contract to add the final 20–30% of blood into the ventricles (active filling).
-2. **Isovolumetric Contraction (0.05s):** The QRS triggers ventricular contraction. Ventricular pressure rises above atrial pressure, closing the AV valves (**S1 Sound, "lub"**). All 4 valves are closed—pressure spikes with no change in volume.
-3. **Rapid & Reduced Ejection (0.3s):** Semilunar valves (aortic & pulmonary) swing open once pressure exceeds diastolic aortic pressure (~80 mmHg).
-4. **Isovolumetric Relaxation (0.08s):** Ventricular repolarization (T wave). Semilunar valves snap shut (**S2 Sound, "dub"**).
-5. **Ventricular Inflow (0.27s):** AV valves reopen for passive ventricular filling (~70% of EDV).
+    // ──────────────────────────────────────────────────────────────────────────
+    // 0. UPLOADED MATERIAL DIRECT EXTRACTION
+    // ──────────────────────────────────────────────────────────────────────────
+    if (materialContext && materialContext.trim().length > 30) {
+      const words = query
+        .replace(/[^a-zA-Z0-9 ]/g, '')
+        .split(' ')
+        .filter((w) => w.length > 3 && !['what', 'when', 'where', 'which', 'explain', 'tell', 'about', 'this', 'that', 'with', 'from', 'have', 'does', 'please'].includes(w));
 
-*Examiner Tip:* Remember that S1 corresponds to AV valve closure (loudest at apex), while S2 marks semilunar valve closure (loudest at base).`,
-        sourceReference: materialContext ? 'Uploaded Cardiovascular Notes' : 'Physiology Core Curriculum',
-      };
+      if (words.length > 0) {
+        const paragraphs = materialContext.split(/\n\s*\n|\r?\n/);
+        const matched = paragraphs.filter((p) => {
+          const pl = p.toLowerCase();
+          return words.filter((w) => pl.includes(w)).length >= Math.min(2, words.length);
+        });
+
+        if (matched.length > 0) {
+          const excerpt = matched.slice(0, 3).join('\n\n').trim();
+          reply = `### Findings from Your Uploaded Material:
+
+"""
+${excerpt.slice(0, 1000)}
+"""
+
+**Academic Synthesis:**
+${
+  mode === 'QUIZ_ME'
+    ? 'Based on this section of your notes: *What is the clinical significance of this mechanism, and how does it relate to patient presentation?*'
+    : mode === 'VIVA_ME'
+    ? 'Examiner Question on your notes: *Can you define the primary mechanism described here and specify its key diagnostic criteria?*'
+    : 'This section highlights the core mechanisms and clinical principles directly relevant to your study topic.'
+}`;
+          return { reply, sourceReference: 'Uploaded Study Notes (Extracted Excerpt)' };
+        }
+      }
     }
 
-    if (lower.includes('frank-starling') || lower.includes('preload') || lower.includes('stroke volume')) {
-      return {
-        reply: `### Frank-Starling Law of the Heart:
-• **Core Principle:** The force of myocardial contraction is directly proportional to the initial muscle fiber length (end-diastolic volume/preload), up to an optimal physiological limit.
-• **Mechanism:** Increased venous return increases end-diastolic volume (EDV). This stretches cardiac sarcomeres closer to the optimal actin-myosin cross-bridge overlap (~2.2 µm), increasing troponin C calcium sensitivity and stroke volume.
-• **Clinical Significance:** Helps match the output of both ventricles beat-by-beat and explains decompensation in systolic heart failure when sarcomeres are overstretched.`,
-        sourceReference: materialContext ? 'Uploaded Cardiovascular Notes' : 'Physiology Core Curriculum',
-      };
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. CARDIOLOGY & CARDIOVASCULAR PHYSIOLOGY
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('cardiac cycle') ||
+      query.includes('heart sound') ||
+      query.includes('s1') ||
+      query.includes('s2') ||
+      query.includes('systole') ||
+      query.includes('diastole') ||
+      query.includes('isovolumetric')
+    ) {
+      if (mode === 'QUIZ_ME') {
+        reply = `### Socratic Challenge: Cardiac Cycle & Auscultation
+
+A 22-year-old medical student is auscultating heart sounds during clinical skills training.
+
+**Question:**
+Which physiological event is strictly responsible for the generation of the **First Heart Sound (S1)**, and which cardiac phase immediately follows it?
+
+A) Closure of aortic and pulmonary valves; Isovolumetric relaxation  
+B) Closure of mitral and tricuspid valves; Isovolumetric contraction  
+C) Rapid ventricular filling into a non-compliant ventricle  
+D) Active atrial contraction adding 20% to end-diastolic volume  
+
+*Type your answer (e.g. "B") with your brief clinical reasoning!*`;
+      } else if (mode === 'VIVA_ME') {
+        reply = `### Oral Viva Voce: Cardiac Mechanics
+
+**Examiner:**
+*"Candidate, please define the cardiac cycle and explain why the First Heart Sound (S1) is heard at the onset of ventricular systole while S2 marks ventricular diastole. Furthermore, what causes physiological splitting of S2 during deep inspiration?"*
+
+**Key Expected Points:**
+1. S1 = Mitral & Tricuspid valve closure (onset of isovolumetric contraction; loudest at apex).
+2. S2 = Aortic & Pulmonic valve closure (onset of isovolumetric relaxation; loudest at base).
+3. S2 Splitting = Inspiration increases venous return to the right heart $\\to$ delays pulmonary valve closure (P2) while decreasing left heart return $\\to$ earlier aortic closure (A2).
+
+How would you formulate your answer?`;
+      } else if (mode === 'REVISE') {
+        reply = `### High-Yield Revision: Cardiac Cycle & Heart Sounds
+• **S1 ("lub"):** Mitral and Tricuspid closure. Marks start of **isovolumetric contraction**. Loudest at the apex (5th ICS midclavicular).
+• **S2 ("dub"):** Aortic and Pulmonic closure. Marks start of **isovolumetric relaxation**. Loudest at the base (2nd ICS right/left sternal borders).
+• **Physiological S2 Splitting:** Inspiration $\\to$ $\\downarrow$ intrathoracic pressure $\\to$ $\\uparrow$ RV filling $\\to$ delayed P2. Normal finding.
+• **Pathological S3:** Rapid passive filling into compliant/dilated ventricle (volume overload in heart failure).
+• **Pathological S4:** Atrial kick into stiff, hypertrophied ventricle (decreased compliance in HTN, aortic stenosis).
+• **Examiner Trap:** S1 occurs *after* the QRS complex onset on ECG, while S2 occurs near the end of the T wave.`;
+      } else {
+        reply = `### The Cardiac Cycle & Heart Sounds Breakdown
+
+The cardiac cycle describes the electrical and mechanical events of a single heartbeat (~0.8s at 75 bpm):
+
+#### 1. Ventricular Systole (Pumping Phase)
+1. **Isovolumetric Contraction (0.05s):** QRS triggers ventricular depolarization. Intraventricular pressure exceeds atrial pressure $\\to$ **Mitral and Tricuspid valves snap shut (S1 Sound, "lub")**. All 4 valves are closed: pressure spikes rapidly with no change in volume.
+2. **Rapid Ejection (0.13s):** Ventricular pressure surpasses aortic (80 mmHg) and pulmonary (10 mmHg) pressures $\\to$ semilunar valves fling open, ejecting ~70% of stroke volume.
+3. **Reduced Ejection (0.14s):** Ventricular repolarization begins (T wave); blood flow decelerates.
+
+#### 2. Ventricular Diastole (Filling Phase)
+4. **Isovolumetric Relaxation (0.08s):** Ventricular pressure falls below aortic/pulmonary pressures $\\to$ **Aortic and Pulmonic valves shut (S2 Sound, "dub")**. All valves closed.
+5. **Rapid Passive Inflow (0.11s):** AV valves open as ventricular pressure dips below atrial pressure. Accounts for **~70-80% of ventricular filling**.
+6. **Diastasis (0.22s):** Slow passive filling as venous pressure equilibrates.
+7. **Atrial Systole (0.10s):** P wave causes atrial contraction, contributing the final **20-30% of blood** (the "atrial kick").
+
+💡 **Clinical Pearl:** In atrial fibrillation, loss of atrial systole can precipitate acute pulmonary edema in patients with stiff, hypertrophied ventricles who rely heavily on the atrial kick!`;
+      }
+      return { reply, sourceReference: 'Cardiovascular Physiology Core Curriculum' };
     }
 
-    if (mode === 'QUIZ_ME' || mode === 'VIVA_ME') {
-      return {
-        reply: `Let's test your high-yield recall on this topic!
+    // ──────────────────────────────────────────────────────────────────────────
+    // 2. FRANK-STARLING & HEMODYNAMICS
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('frank-starling') ||
+      query.includes('preload') ||
+      query.includes('afterload') ||
+      query.includes('stroke volume') ||
+      query.includes('contractility') ||
+      query.includes('inotropy')
+    ) {
+      if (mode === 'QUIZ_ME') {
+        reply = `### Socratic Challenge: Frank-Starling Law
 
-**Viva Question:**
-*"Can you explain why the First Heart Sound (S1) occurs, which anatomical valves are involved, and during which exact mechanical phase of the cardiac cycle it is heard?"*
+A 65-year-old patient with congestive heart failure receives IV Furosemide. 
 
-Take your time and answer in 2–3 sentences, then I will assess your answer.`,
-        sourceReference: 'Interactive Academic Tutor',
-      };
+**Question:**
+According to the Frank-Starling mechanism, how does lowering the patient's circulating blood volume with a loop diuretic alleviate pulmonary congestion without critically reducing cardiac output in decompensated heart failure?
+
+*Think about the shape of the Frank-Starling ventricular performance curve!*`;
+      } else {
+        reply = `### Frank-Starling Mechanism & Hemodynamics
+
+#### 1. The Core Principle
+*"Within physiological limits, the force of myocardial contraction is directly proportional to the initial length of cardiac muscle fibers (End-Diastolic Volume / Preload)."*
+
+#### 2. Cellular Mechanism
+• Increased venous return stretches cardiac myocytes toward the optimal sarcomere length (**~2.2 µm**).
+• This stretch optimizes actin-myosin cross-bridge alignment and increases **Troponin C affinity for calcium**.
+• Result: Greater calcium-induced force generation $\\to$ increased **Stroke Volume (SV)**.
+
+#### 3. Determinants of Stroke Volume:
+1. **Preload:** Degree of stretch before contraction (represented by EDV or wedge pressure).
+2. **Afterload:** The wall stress/impedance the ventricle must overcome to eject blood (primarily systemic vascular resistance / aortic pressure).
+3. **Contractility (Inotropy):** Intrinsic contractile power independent of loading conditions (modulated by sympathetic $\\beta_1$ adrenergic stimulation).
+
+💡 **Clinical Relevance:** In systolic heart failure, the Frank-Starling curve is shifted downward and flattened. Excessive volume stretch no longer increases stroke volume and instead leads to pulmonary vascular congestion.`;
+      }
+      return { reply, sourceReference: 'Hemodynamics & Cardiovascular Dynamics' };
     }
 
-    return {
-      reply: `That is an essential clinical concept.
+    // ──────────────────────────────────────────────────────────────────────────
+    // 3. MYOCARDIAL INFARCTION & ACS
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('myocardial infarction') ||
+      query.includes('heart attack') ||
+      query.includes('stemi') ||
+      query.includes('nstemi') ||
+      query.includes('troponin') ||
+      query.includes('acute coronary') ||
+      query.includes('ischemia')
+    ) {
+      reply = `### Myocardial Infarction (MI) — Pathophysiology & Management
 
-When reviewing this topic, always organize your thinking into three tiers:
-1. **Core Mechanism:** What are the cellular and physiological steps driving the process?
-2. **Key Determinants:** What physiological factors regulate or alter this process under resting vs stress conditions?
-3. **Clinical Relevance:** What happens when this mechanism fails (e.g. valve stenosis, heart failure, or hypoxia)?
+#### 1. Pathophysiologic Cascade
+1. **Atherosclerotic Plaque Rupture:** Disruption of an unstable fibrous cap exposes subendothelial collagen and von Willebrand factor (vWF).
+2. **Platelet Activation & Thrombus:** Platelets adhere via GpIb, activate (secreting ADP & Thromboxane A2), and cross-link via GpIIb/IIIa receptors $\\to$ occlusive coronary thrombus.
+3. **Ischemia & Cellular Hypoxia:** Within 60 seconds, aerobic glycolysis ceases, intracellular ATP plummets, and lactic acid builds up.
+4. **Irreversible Injury:** If flow is not restored within **20–30 minutes**, coagulative necrosis ensues, beginning in the subendocardium and progressing transmurally.
 
-Would you like me to walk through a detailed explanation, quiz you with a viva-style question, or generate quick revision flashcards on this topic?`,
-      sourceReference: materialContext ? 'Uploaded Study Document' : 'Academic Medical Tutor',
-    };
+#### 2. Histopathological Evolution Timeline
+• **0–4 hours:** Minimal light microscopic changes; wavy myocardial fibers at borders.
+• **4–24 hours:** Early coagulative necrosis, contraction band necrosis (if reperfused), edema, hemorrhage.
+• **1–3 days:** Extensive coagulative necrosis, dense **neutrophilic infiltrate** (highest risk of fibrinous pericarditis).
+• **3–7 days:** Macrophage phagocytosis of necrotic myocytes. **Critical window of free-wall, papillary muscle, or interventricular septum rupture!**
+• **1–2 weeks:** Vascular granulation tissue with proliferating capillaries and collagen deposition.
+• **>2 months:** Dense, hypocellular fibrous collagenous scar.
+
+#### 3. Diagnostic Biomarkers
+• **Cardiac Troponin I / T:** Highly sensitive & specific. Rises within **3–6 hours**, peaks at **24 hours**, and persists for **7–10 days**.
+• **CK-MB:** Rises in 4–6 hours, peaks at 24 hours, and **returns to baseline by 48–72 hours** (ideal for diagnosing *re-infarction*).
+
+#### 4. Coronary Arterial Territories
+• **LAD (Left Anterior Descending):** Anteroseptal wall (leads V1–V4). Most commonly occluded ("widow maker").
+• **RCA (Right Coronary Artery):** Inferior wall (leads II, III, aVF) & posterior wall. Associated with AV block and bradycardia.
+• **LCx (Left Circumflex):** Lateral wall (leads I, aVL, V5, V6).`;
+      return { reply, sourceReference: 'Cardiovascular Pathology & Clinical Medicine' };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 4. RESPIRATORY: ASTHMA, COPD & SPIROMETRY
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('asthma') ||
+      query.includes('copd') ||
+      query.includes('spirometry') ||
+      query.includes('fev1') ||
+      query.includes('fvc') ||
+      query.includes('obstructive') ||
+      query.includes('restrictive')
+    ) {
+      reply = `### Obstructive vs Restrictive Lung Disease & Spirometry
+
+#### 1. Diagnostic Spirometry Differentiation
+• **Obstructive Pattern (Asthma, COPD, Bronchiectasis):**
+  - **FEV1/FVC Ratio < 0.70 (or < 70%)** is the hallmark!
+  - FEV1 is markedly reduced due to airway resistance and flow limitation.
+  - Air trapping increases Residual Volume (RV) and Total Lung Capacity (TLC).
+• **Restrictive Pattern (Idiopathic Pulmonary Fibrosis, Sarcoidosis, Scoliosis):**
+  - **FEV1/FVC Ratio is NORMAL or INCREASED (> 0.70)**.
+  - Both FEV1 and FVC are reduced proportionally due to impaired chest wall expansion or parenchymal stiffening.
+  - Total Lung Capacity (TLC) is reduced (< 80% predicted).
+
+#### 2. Asthma vs COPD Pathophysiologic Differences
+| Parameter | Bronchial Asthma | Chronic Obstructive Pulmonary Disease (COPD) |
+| :--- | :--- | :--- |
+| **Primary Age** | Often childhood / young adult | Usually > 40 years old, history of smoking |
+| **Pathology** | Reversible airway hyperresponsiveness | Irreversible destruction (emphysema) & chronic bronchitis |
+| **Inflammatory Cells**| Eosinophils, CD4+ Th2 cells, IgE | Neutrophils, CD8+ T cells, Macrophages |
+| **Bronchodilator Reversibility** | **Positive** (>12% and >200 mL increase in FEV1 post-SABA) | Minimal or fixed irreversibility |
+| **Diffusion Capacity (DLCO)** | Normal or slightly elevated | **Decreased** in emphysematous destruction |
+
+💡 **Exam Tip:** In an acute severe asthma attack, a **normal or elevated PaCO2** is an ominous sign of impending respiratory muscle fatigue and respiratory failure!`;
+      return { reply, sourceReference: 'Pulmonology & Respiratory Physiology' };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 5. RENAL: GFR, AKI & ACID-BASE
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('renal') ||
+      query.includes('kidney') ||
+      query.includes('gfr') ||
+      query.includes('aki') ||
+      query.includes('nephron') ||
+      query.includes('acid-base') ||
+      query.includes('acidosis') ||
+      query.includes('alkalosis')
+    ) {
+      reply = `### Renal Physiology & Acute Kidney Injury (AKI)
+
+#### 1. Glomerular Filtration & Hemodynamics
+$$\\text{GFR} = K_f [(P_{GC} - P_{BS}) - (\\pi_{GC} - \\pi_{BS})]$$
+• **Afferent Arteriolar Dilation (via Prostaglandins):** Increases $P_{GC}$ $\\to$ increases GFR. (NSAIDs inhibit prostaglandins $\\to$ afferent constriction $\\to$ $\\downarrow$ GFR).
+• **Efferent Arteriolar Constriction (via Angiotensin II):** Increases $P_{GC}$ $\\to$ preserves GFR during hypovolemia. (ACE inhibitors block this $\\to$ efferent dilation $\\to$ precipitous $\\downarrow$ GFR in renal artery stenosis).
+
+#### 2. Classification of Acute Kidney Injury (KDIGO)
+1. **Pre-Renal Azotemia (~60%):**
+   - Etiology: Hypovolemia, cardiogenic shock, sepsis, renal artery stenosis.
+   - Intact tubular function: Kidneys reabsorb sodium and water avidly.
+   - Lab Hallmarks: **BUN/Creatinine ratio > 20:1**, **FeNa < 1%**, Urine Osmolality > 500 mOsm/kg. Hyaline casts.
+2. **Intrinsic Renal AKI (~35%):**
+   - Etiology: Acute Tubular Necrosis (ATN due to prolonged ischemia or nephrotoxins like aminoglycosides/contrast), Glomerulonephritis, AIN.
+   - Damaged tubules: Inability to concentrate urine or reabsorb sodium.
+   - Lab Hallmarks: **BUN/Creatinine ratio 10–15:1**, **FeNa > 2%**, Urine Osmolality < 350 mOsm/kg. **"Muddy brown" granular casts**.
+3. **Post-Renal AKI (~5%):**
+   - Etiology: Bilateral ureteral obstruction, BPH, neurogenic bladder, pelvic tumor.
+   - Ultrasound shows bilateral hydronephrosis.
+
+#### 3. Quick Acid-Base Mnemonic: High Anion Gap Metabolic Acidosis
+$$\\text{Anion Gap} = \\text{Na}^+ - (\\text{Cl}^- + \\text{HCO}_3^-) \\quad [\\text{Normal: } 8-12 \\text{ mEq/L}]$$
+Remember **GOLDMARK** or **MUDPILES**:
+• **M**ethanol, **U**remia, **D**iabetic Ketoacidosis, **P**ropylene glycol, **I**soniazid/Iron, **L**actic acidosis, **E**thylene glycol, **S**alicylates (Aspirin).`;
+      return { reply, sourceReference: 'Renal & Acid-Base Medicine' };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 6. ENDOCRINOLOGY: DIABETES & THYROID
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('diabetes') ||
+      query.includes('dka') ||
+      query.includes('insulin') ||
+      query.includes('glucose') ||
+      query.includes('thyroid') ||
+      query.includes('graves') ||
+      query.includes('hashimoto')
+    ) {
+      reply = `### Endocrinology Core: Diabetes & Thyroid Pathophysiology
+
+#### 1. Diabetes Mellitus: Type 1 vs Type 2
+• **Type 1 Diabetes:**
+  - Autoimmune destruction of pancreatic $\\beta$-cells mediated by CD8+ T lymphocytes.
+  - Genetic association: HLA-DR3, HLA-DR4.
+  - Serology: Anti-GAD65, anti-islet cell antibodies (ICA), anti-insulin antibodies.
+  - Acute complication: **Diabetic Ketoacidosis (DKA)**.
+• **Type 2 Diabetes:**
+  - Peripheral insulin resistance followed by progressive pancreatic $\\beta$-cell secretory exhaustion.
+  - Strongly tied to visceral adiposity, inflammatory cytokines (TNF-$\\alpha$, IL-6), and genetic polygenic traits.
+  - Acute complication: **Hyperosmolar Hyperglycemic State (HHS)** (minimal ketones due to residual insulin).
+
+#### 2. DKA Pathophysiology & Management Protocol
+• **Triad:** Hyperglycemia (>250 mg/dL), High Anion Gap Metabolic Acidosis (pH < 7.30, $\\text{HCO}_3 < 18$), and Ketonemia/Ketonuria ($\\beta$-hydroxybutyrate).
+• **Pathogenesis:** Absolute insulin lack + glucagon excess $\\to$ unrestrained lipolysis $\\to$ free fatty acids converted by liver into acetoacetate and $\\beta$-hydroxybutyrate.
+• **Management Steps:**
+  1. **Isotonic IV Fluids (0.9% Normal Saline):** Restores intravascular volume first!
+  2. **Potassium Repletion:** Insulin drives $K^+$ into cells. Do NOT start insulin if serum $K^+ < 3.3 \\text{ mEq/L}$ to prevent fatal cardiac arrhythmias!
+  3. **IV Regular Insulin Infusion:** Suppresses lipolysis and hepatic gluconeogenesis.
+
+#### 3. Thyroid Axis Interpretation
+• **Primary Hyperthyroidism (Graves):** $\\downarrow$ TSH, $\\uparrow$ Free T4/T3. TSH receptor-stimulating antibodies (TSI), exophthalmos, pretibial myxedema.
+• **Primary Hypothyroidism (Hashimoto):** $\\uparrow$ TSH, $\\downarrow$ Free T4. Anti-TPO and anti-thyroglobulin antibodies, lymphocytic infiltration with Hürthle cells.`;
+      return { reply, sourceReference: 'Endocrine & Metabolic Medicine' };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 7. BENGALI / BANGLISH INQUIRY RECOGNITION
+    // ──────────────────────────────────────────────────────────────────────────
+    if (
+      query.includes('ki') ||
+      query.includes('kivabe') ||
+      query.includes('bujhiye') ||
+      query.includes('karon') ||
+      query.includes('laxon') ||
+      query.includes('somosya') ||
+      query.includes('bolo') ||
+      query.includes('prosno')
+    ) {
+      reply = `### মেডিকেল কনসেপ্ট পর্যালোচনা (Medical Concept Overview)
+
+আপনার প্রশ্নটির একাডেমিক বিশ্লেষণ নিচে বিস্তারিতভাবে দেওয়া হলো:
+
+1. **মূল মেকানিজম (Primary Mechanism):**
+   - ক্লিনিক্যাল সাইন্সে কোনো শারীরবৃত্তীয় প্রক্রিয়া বুঝতে হলে প্রথমে দেখতে হবে কোন কোষ বা অঙ্গ কীভাবে স্বাভাবিক অবস্থায় কাজ করে।
+   - প্যাথলজিক্যাল অবস্থায় স্বাভাবিক হোমিওস্ট্যাসিস ব্যাহত হয় এবং নির্দিষ্ট ক্লিনিক্যাল লক্ষণ (Symptoms & Signs) প্রকাশ পায়।
+
+2. **ডায়াগনস্টিক দৃষ্টিভঙ্গি (Diagnostic Approach):**
+   - **ইতিহাস (History):** রোগের সূত্রপাত (Onset), তীব্রতা (Severity), এবং স্থান (Location)।
+   - **শারীরিক পরীক্ষা (Physical Examination):** পালস, ব্লাড প্রেশার, অ্যাসকালটেশন (Heart/Lung sounds)।
+   - **তদন্ত (Investigations):** রুটিন ব্লাড টেস্ট, ইসিজি, চেস্ট এক্স-রে, অথবা স্পেসিফিক বায়োমার্কার।
+
+3. **পরীক্ষায় ভালো করার টিপস (High-Yield Exam Strategy):**
+   - ভাইভায় উত্তর দেওয়ার সময় সবসময় **সংজ্ঞা (Definition)** দিয়ে শুরু করবেন।
+   - এরপর **শ্রেণীবিভাগ (Classification)** এবং **প্রধান ৩টি কারণ (Top 3 Causes)** ক্রমানুসারে বলবেন।
+
+আপনার যদি এই টপিকের উপর নির্দিষ্ট কোনো কার্ডিয়াক, রেসপিরেটরি বা ফার্মাকোলজি প্রশ্ন থাকে, নির্দ্বিধায় আমাকে জানান!`;
+      return { reply, sourceReference: 'Techboloy Bilingual Medical Education' };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 8. GENERAL HIGH-YIELD ACADEMIC RESPONSE
+    // ──────────────────────────────────────────────────────────────────────────
+    if (mode === 'QUIZ_ME') {
+      reply = `### Interactive Clinical Socratic Quiz
+
+Let's test your high-yield application on **${topic || subject || 'Clinical Medicine'}**!
+
+**Clinical Vignette:**
+A 58-year-old male presents with sudden-onset retrosternal chest tightness radiating to the left jaw and dyspnea. His ECG reveals 2.5 mm ST-segment elevation in leads II, III, and aVF with reciprocal ST depression in leads I and aVL.
+
+**Question:**
+1. Which specific coronary artery is occluded in this patient?
+2. Which cardiac conduction abnormality is this patient at highest risk for, and why?
+
+*Please submit your diagnostic deduction and reasoning!*`;
+    } else if (mode === 'VIVA_ME') {
+      reply = `### External Examiner Oral Viva Voce
+
+**Examiner:**
+*"Candidate, in the context of ${topic || subject || 'Medical Science'}, please provide a structured answer to the following:*
+
+1. *Define the underlying pathophysiological process concisely.*
+2. *Classify the etiology into primary vs secondary causes.*
+3. *What is the single most critical investigation of choice and the immediate first-line management?*"
+
+Take a breath, organize your response systematically, and present your answer as you would in your final university professional examination.`;
+    } else {
+      reply = `### Structured Medical Academic Analysis: ${topic || subject || 'Clinical Concept'}
+
+To master this medical concept for both written exams and clinical rotations, structure your knowledge into these 4 fundamental pillars:
+
+#### 1. Pathophysiological Mechanism
+Every clinical disease process stems from an altered physiological baseline—whether it is cellular hypoxia, enzyme deficiency, receptor dysregulation, or immune-mediated tissue damage. Understanding the cellular cascade makes memorization obsolete.
+
+#### 2. Clinical Manifestations (Symptom-Mechanism Pairing)
+Do not just memorize signs; link each physical finding to its exact mechanism:
+• *Why does the heart sound split or develop a murmur?*
+• *Why does the lung crackle or wheeze?*
+• *Why does the renal clearance fall or retain sodium?*
+
+#### 3. Diagnostic Algorithm
+Always think in a stepwise progression:
+1. **Bedside Tests:** Vitals, ECG, Urinalysis, Point-of-care ultrasound.
+2. **Laboratory Biomarkers:** CBC, electrolytes, organ-specific enzymes (troponins, amylase, creatinine).
+3. **Definitive Imaging / Histology:** CT, MRI, Echocardiography, or tissue biopsy.
+
+#### 4. Therapeutic Principles
+Identify the target:
+• *Symptom relief (e.g. bronchodilator, diuretic)*
+• *Pathological reversal (e.g. reperfusion, antimicrobials)*
+• *Long-term mortality reduction (e.g. ACE inhibitors, statins, beta-blockers)*
+
+Would you like me to dive deep into a specific disease entity, generate a high-yield flashcard set, or quiz you with a clinical vignette on this topic?`;
+    }
+
+    // Append student weak concepts reinforcement if relevant
+    if (weakConcepts && weakConcepts.length > 0) {
+      reply += `\n\n💡 **Personalized Revision Tip:** You've recently reviewed questions on *${weakConcepts.slice(0, 2).join(' & ')}*. Be sure to cross-correlate those mechanisms with this discussion!`;
+    }
+
+    return { reply, sourceReference: source };
   }
-
   private static generateDeterministicSummary(
     materialText: string,
     title: string,
