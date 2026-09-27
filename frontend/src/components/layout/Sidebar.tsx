@@ -10,11 +10,17 @@ import {
   Stethoscope,
   ShieldCheck,
   Brain,
-    Layers,
+  Layers,
   CheckCircle2,
   MessageSquare,
   TrendingUp,
   FolderOpen,
+  RotateCcw,
+  CalendarCheck,
+  Compass,
+  AlertCircle,
+  Network,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -23,6 +29,14 @@ const clinicalItems = [
   { to: '/cases', icon: Stethoscope, label: 'Patients' },
   { to: '/exams', icon: GraduationCap, label: 'OSCE / Exams' },
   { to: '/history', icon: History, label: 'Session History' },
+];
+
+const adaptiveItems = [
+  { to: '/today', icon: CalendarCheck, label: "Today's Plan", badge: 'NEW' },
+  { to: '/revision', icon: RotateCcw, label: 'Smart Revision' },
+  { to: '/study-plan', icon: Compass, label: 'Study Plan' },
+  { to: '/progress/knowledge-map', icon: Network, label: 'Knowledge Map' },
+  { to: '/progress/mistakes', icon: AlertCircle, label: 'Mistake Bank' },
 ];
 
 const academicItems = [
@@ -67,6 +81,40 @@ export default function Sidebar() {
 
       {/* Navigation List (Scrollable) */}
       <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+        {/* Adaptive Learning Section (Phase 7) */}
+        <div>
+          <div className="flex items-center justify-between px-3 mb-1">
+            <p className="text-[10px] font-bold text-teal-800 uppercase tracking-wider flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-teal-600" />
+              Adaptive Revision
+            </p>
+            <span className="text-[9px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-bold">
+              PHASE 7
+            </span>
+          </div>
+          <div className="space-y-0.5">
+            {adaptiveItems.map(({ to, icon: Icon, label, badge }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'sidebar-item-active bg-teal-50 text-teal-900 font-semibold'
+                    : 'sidebar-item hover:text-teal-900 hover:bg-teal-50/50'
+                }
+              >
+                <Icon className="w-4 h-4 flex-shrink-0 text-teal-600" />
+                <span className="flex-1">{label}</span>
+                {badge && (
+                  <span className="text-[9px] bg-teal-600 text-white font-bold px-1.5 py-0.2 rounded">
+                    {badge}
+                  </span>
+                )}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+
         {/* Clinical Simulation Section */}
         <div>
           <p className="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
@@ -91,12 +139,9 @@ export default function Sidebar() {
         {/* Academic Workspace Section */}
         <div>
           <div className="flex items-center justify-between px-3 mb-1">
-            <p className="text-[10px] font-bold text-teal-800 uppercase tracking-wider">
-              Academic Workspace
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+              Study Workspace
             </p>
-            <span className="text-[9px] bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded font-bold">
-              NEW
-            </span>
           </div>
           <div className="space-y-0.5">
             {academicItems.map(({ to, icon: Icon, label }) => (
@@ -105,8 +150,8 @@ export default function Sidebar() {
                 to={to}
                 className={({ isActive }) =>
                   isActive
-                    ? 'sidebar-item-active bg-teal-50 text-teal-900 font-semibold'
-                    : 'sidebar-item hover:text-teal-900 hover:bg-teal-50/50'
+                    ? 'sidebar-item-active'
+                    : 'sidebar-item'
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />

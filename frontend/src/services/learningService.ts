@@ -282,6 +282,185 @@ export const learningService = {
     const res = await api.get('/learning/search', { params: { q: query, type } });
     return res.data;
   },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Smart Revision & Spaced Repetition
+  // ────────────────────────────────────────────────────────
+  async getTodayRevision(): Promise<{
+    dueCards: any[];
+    counts: { overdue: number; dueToday: number; newCards: number; totalDue: number };
+    topicsDueReview: any[];
+    activeMistakes: any[];
+    recommendations: any[];
+    todayTasks: any[];
+    todayPlanItems: any[];
+  }> {
+    const res = await api.get('/revision/today');
+    return res.data;
+  },
+
+  async getPrioritizedDueCards(limit = 50): Promise<{
+    dueCards: any[];
+    counts: { overdue: number; dueToday: number; newCards: number; totalDue: number };
+  }> {
+    const res = await api.get('/revision/due-cards', { params: { limit } });
+    return res.data;
+  },
+
+  async rateFlashcard(cardId: string, rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY'): Promise<any> {
+    const res = await api.post('/revision/rate-card', { cardId, rating });
+    return res.data;
+  },
+
+  async getSpacedRepetitionSettings(): Promise<any> {
+    const res = await api.get('/revision/settings');
+    return res.data;
+  },
+
+  async updateSpacedRepetitionSettings(settings: any): Promise<any> {
+    const res = await api.put('/revision/settings', settings);
+    return res.data;
+  },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Adaptive MCQ & Mistake Bank
+  // ────────────────────────────────────────────────────────
+  async startAdaptiveMCQ(params: {
+    subject: string;
+    topic?: string;
+    count?: number;
+    questionType?: string;
+    difficulty?: string;
+  }): Promise<{ sessionId: string; subject: string; topic?: string; questions: any[] }> {
+    const res = await api.post('/adaptive/mcq/start', params);
+    return res.data;
+  },
+
+  async submitAdaptiveMCQAnswer(params: {
+    sessionId: string;
+    questionId: string;
+    selectedOption: string;
+    responseTimeSeconds?: number;
+  }): Promise<{
+    isCorrect: boolean;
+    correctOption: string;
+    explanation: string;
+    sourceReference?: string;
+    conceptTested: string;
+    learningDifficultyAdvice: string;
+    answerId: string;
+  }> {
+    const res = await api.post('/adaptive/mcq/submit', params);
+    return res.data;
+  },
+
+  async getWeakTopics(): Promise<any[]> {
+    const res = await api.get('/adaptive/mcq/weak-topics');
+    return res.data;
+  },
+
+  async getMistakes(params?: { subject?: string; reviewed?: boolean }): Promise<any[]> {
+    const res = await api.get('/adaptive/mistakes', { params });
+    return res.data;
+  },
+
+  async markMistakeReviewed(id: string): Promise<any> {
+    const res = await api.post(`/adaptive/mistakes/${id}/reviewed`);
+    return res.data;
+  },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Mastery & Knowledge Map
+  // ────────────────────────────────────────────────────────
+  async getTopicMasteries(): Promise<any[]> {
+    const res = await api.get('/adaptive/mastery');
+    return res.data;
+  },
+
+  async getKnowledgeMap(): Promise<any[]> {
+    const res = await api.get('/adaptive/knowledge-map');
+    return res.data;
+  },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Study Plan & Daily Tasks
+  // ────────────────────────────────────────────────────────
+  async getActiveStudyPlan(): Promise<any> {
+    const res = await api.get('/adaptive/study-plan');
+    return res.data;
+  },
+
+  async createStudyPlan(planData: any): Promise<any> {
+    const res = await api.post('/adaptive/study-plan', planData);
+    return res.data;
+  },
+
+  async getTodayTasks(): Promise<any[]> {
+    const res = await api.get('/adaptive/tasks/today');
+    return res.data;
+  },
+
+  async toggleStudyTask(taskId: string): Promise<any> {
+    const res = await api.post(`/adaptive/tasks/${taskId}/toggle`);
+    return res.data;
+  },
+
+  async getRecommendations(): Promise<any[]> {
+    const res = await api.get('/adaptive/recommendations');
+    return res.data;
+  },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Adaptive Viva
+  // ────────────────────────────────────────────────────────
+  async startAdaptiveViva(params: {
+    subject?: string;
+    topic?: string;
+    difficulty?: string;
+  }): Promise<{ sessionId: string; subject: string; topic: string; currentQuestion: any }> {
+    const res = await api.post('/adaptive/viva/start', params);
+    return res.data;
+  },
+
+  async submitAdaptiveVivaAnswer(params: {
+    sessionId: string;
+    questionId: string;
+    studentAnswer: string;
+    topic?: string;
+    currentDifficulty?: string;
+  }): Promise<{
+    evaluation: any;
+    isSessionComplete: boolean;
+    nextQuestion?: any;
+    turnCount: number;
+  }> {
+    const res = await api.post('/adaptive/viva/submit', params);
+    return res.data;
+  },
+
+  // ────────────────────────────────────────────────────────
+  // PHASE 7: Learning Streak & Multi-timeframe Analytics
+  // ────────────────────────────────────────────────────────
+  async getLearningStreak(): Promise<{
+    currentStreak: number;
+    longestStreak: number;
+    studyDaysThisMonth: number;
+    lastActiveDate: string | null;
+    message: string;
+  }> {
+    const res = await api.get('/adaptive/analytics/streak');
+    return res.data;
+  },
+
+  async getWeeklyReport(): Promise<any> {
+    const res = await api.get('/adaptive/analytics/weekly-report');
+    return res.data;
+  },
+
+  async getTimeRangeAnalytics(timeframe: '7d' | '30d' | '90d' | 'all'): Promise<any> {
+    const res = await api.get('/adaptive/analytics/range', { params: { timeframe } });
+    return res.data;
+  },
 };
 
 export default learningService;

@@ -16,6 +16,8 @@ import tutorRoutes from "./routes/tutor";
 import flashcardRoutes from "./routes/flashcards";
 import mcqRoutes from "./routes/mcq";
 import vivaRoutes from "./routes/viva";
+import revisionRoutes from "./routes/revision";
+import adaptiveRoutes from "./routes/adaptive";
 
 
 dotenv.config();
@@ -67,6 +69,8 @@ app.use("/api/tutor", tutorRoutes);
 app.use("/api/flashcards", flashcardRoutes);
 app.use("/api/mcq", mcqRoutes);
 app.use("/api/viva", vivaRoutes);
+app.use("/api/revision", revisionRoutes);
+app.use("/api/adaptive", adaptiveRoutes);
 
 
 // 404 handler

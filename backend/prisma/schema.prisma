@@ -25,6 +25,16 @@ model User {
   mcqPracticeSessions MCQPracticeSession[]
   vivaSessions    VivaSession[]
   studySessions   StudySession[]
+  flashcardReviewStates FlashcardReviewState[]
+  mistakeRecords        MistakeRecord[]
+  topicMasteries        TopicMastery[]
+  vivaConceptPerformances VivaConceptPerformance[]
+  studyPlans            StudyPlan[]
+  studyPlanTasks        StudyPlanTask[]
+  learningStreak        LearningStreak?
+  learningRecommendations LearningRecommendation[]
+  learningEvents        LearningEvent[]
+  spacedRepetitionSettings SpacedRepetitionSettings?
 
   @@map("users")
 }
@@ -611,6 +621,7 @@ model Flashcard {
   updatedAt       DateTime        @updatedAt
 
   reviews         FlashcardReview[]
+  reviewStates    FlashcardReviewState[]
 
   @@map("flashcards")
 }
@@ -659,6 +670,9 @@ model MCQQuestion {
   correctOption   String       // "A", "B", "C", "D"
   explanation     String
   difficulty      String       @default("medium") // "easy", "medium", "hard"
+  subtopic        String?
+  concept         String?
+  questionType    String       @default("Conceptual") // "Recall", "Conceptual", "Clinical Scenario", "Application", "Reasoning", "Mixed"
   sourceReference String?
   reviewStatus    String       @default("APPROVED")
   createdAt       DateTime     @default(now())
@@ -765,4 +779,178 @@ model StudySession {
   endedAt         DateTime?
 
   @@map("study_sessions")
+}
+
+
+// ============================================================================
+// PHASE 7: ADAPTIVE LEARNING & SMART REVISION ENGINE MODELS
+// ============================================================================
+
+model FlashcardReviewState {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId          String
+  card            Flashcard     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  repetitionCount Int           @default(0)
+  intervalDays    Float         @default(0)
+  easeFactor      Float         @default(2.5)
+  dueAt           DateTime      @default(now())
+  lastReviewedAt  DateTime?
+  lastRating      String?       // "AGAIN", "HARD", "GOOD", "EASY"
+  lapses          Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([userId, cardId])
+  @@map("flashcard_review_states")
+}
+
+model MistakeRecord {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questionId      String
+  selectedAnswer  String
+  correctAnswer   String
+  conceptId       String?
+  conceptName     String?
+  subject         String?
+  topic           String?
+  explanation     String?
+  sourceReference String?
+  attemptNumber   Int           @default(1)
+  reviewed        Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("mistake_records")
+}
+
+model TopicMastery {
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject           String
+  topic             String
+  status            String        @default("NEW") // "NEW", "LEARNING", "REVIEW", "STRONG"
+  masteryPercentage Float         @default(0.0)
+  mcqAccuracy       Float         @default(0.0)
+  flashcardRetention Float        @default(0.0)
+  vivaCoverage      Float         @default(0.0)
+  totalAttempts     Int           @default(0)
+  lastStudiedAt     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([userId, subject, topic])
+  @@map("topic_masteries")
+}
+
+model VivaConceptPerformance {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vivaSessionId   String
+  conceptName     String
+  status          String        // "COVERED", "PARTIALLY_COVERED", "MISSED", "INCORRECT"
+  feedback        String?
+  createdAt       DateTime      @default(now())
+
+  @@map("viva_concept_performances")
+}
+
+model StudyPlan {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  goal              String
+  subjects          String          // JSON array string
+  dailyTimeMinutes  Int             @default(60)
+  availableDays     String          // JSON array string
+  examDate          DateTime?
+  isActive          Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  tasks             StudyPlanTask[]
+
+  @@map("study_plans")
+}
+
+model StudyPlanTask {
+  id                String          @id @default(uuid())
+  planId            String
+  plan              StudyPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOfWeek         String          // "Monday", "Tuesday", etc.
+  scheduledDate     DateTime?
+  subject           String
+  topic             String
+  taskType          String          // "READING", "MCQ", "FLASHCARD", "VIVA", "REVISION"
+  durationMinutes   Int             @default(30)
+  isCompleted       Boolean         @default(false)
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+
+  @@map("study_plan_tasks")
+}
+
+model LearningStreak {
+  id              String        @id @default(uuid())
+  userId          String        @unique
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak   Int           @default(0)
+  longestStreak   Int           @default(0)
+  lastActiveDate  String?       // "YYYY-MM-DD"
+  activeDaysCount Int           @default(0)
+  updatedAt       DateTime      @updatedAt
+
+  @@map("learning_streaks")
+}
+
+model LearningRecommendation {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            String        // "FLASHCARD_DUE", "WEAK_CONCEPT", "MCQ_REINFORCE", "INACTIVITY", "VIVA_REVISION"
+  title           String
+  description     String
+  subject         String?
+  topic           String?
+  actionUrl       String
+  priority        String        @default("MEDIUM") // "HIGH", "MEDIUM", "LOW"
+  isDismissed     Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+
+  @@map("learning_recommendations")
+}
+
+model LearningEvent {
+  id              String        @id @default(uuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType       String        // "MATERIAL_OPENED", "NOTE_CREATED", "FLASHCARD_REVIEWED", "MCQ_STARTED", "MCQ_ANSWERED", "MCQ_COMPLETED", "VIVA_STARTED", "VIVA_COMPLETED", "TOPIC_STUDIED", "REVISION_COMPLETED", "AI_TUTOR_USED", "STUDY_PLAN_TASK_COMPLETED"
+  entityId        String?
+  subject         String?
+  topic           String?
+  metadata        String?       // JSON string
+  createdAt       DateTime      @default(now())
+
+  @@map("learning_events")
+}
+
+model SpacedRepetitionSettings {
+  id                     String        @id @default(uuid())
+  userId                 String        @unique
+  user                   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newCardsPerDay         Int           @default(20)
+  maxReviewsPerDay       Int           @default(50)
+  reminderEnabled        Boolean       @default(true)
+  preferredReminderTime  String        @default("09:00")
+  updatedAt              DateTime      @updatedAt
+
+  @@map("spaced_repetition_settings")
 }

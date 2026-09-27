@@ -770,3 +770,167 @@ export interface LearningHubSummary {
     mcqSession: MCQPracticeSession | null;
   };
 }
+
+// ==========================================
+// PHASE 7: ADAPTIVE LEARNING & SMART REVISION TYPES
+// ==========================================
+
+export type ReviewRating = 'AGAIN' | 'HARD' | 'GOOD' | 'EASY';
+
+export interface FlashcardReviewState {
+  id: string;
+  userId: string;
+  cardId: string;
+  repetitionCount: number;
+  intervalDays: number;
+  easeFactor: number;
+  dueAt: string;
+  lastReviewedAt: string | null;
+  lastRating: ReviewRating | null;
+  lapses: number;
+}
+
+export interface PrioritizedFlashcard {
+  id: string;
+  deckId: string;
+  deckTitle: string;
+  subject: string;
+  topic?: string;
+  question: string;
+  answer: string;
+  explanation?: string;
+  sourceReference?: string;
+  difficulty: string;
+  reviewState: FlashcardReviewState | null;
+  isOverdue: boolean;
+  isNew: boolean;
+}
+
+export interface MistakeRecord {
+  id: string;
+  userId: string;
+  questionId: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  conceptName?: string;
+  subject?: string;
+  topic?: string;
+  explanation?: string;
+  sourceReference?: string;
+  attemptNumber: number;
+  reviewed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WeakTopicAnalysis {
+  topic: string;
+  subject: string;
+  accuracy: number;
+  mistakeCount: number;
+  flashcardLapseCount: number;
+  vivaMissedConcepts: number;
+  totalAttempts: number;
+  lastRevisedDaysAgo: number | null;
+  needsAttention: boolean;
+  statusText: string;
+  recommendedAction: string;
+}
+
+export interface TopicMasteryIndicator {
+  subject: string;
+  topic: string;
+  status: 'NEW' | 'LEARNING' | 'REVIEW' | 'STRONG';
+  masteryPercentage: number;
+  mcqAccuracy: number | null;
+  mcqAttempts: number;
+  flashcardRetention: number | null;
+  flashcardCardsReviewed: number;
+  vivaCoverage: number | null;
+  lastRevisedDaysAgo: number | null;
+  explanation: string;
+}
+
+export interface KnowledgeMapNode {
+  id: string;
+  name: string;
+  type: 'subject' | 'topic' | 'subtopic' | 'concept';
+  status: 'NEW' | 'LEARNING' | 'REVIEW' | 'STRONG';
+  masteryPercentage: number;
+  notesCount: number;
+  flashcardsCount: number;
+  mcqsCount: number;
+  vivaCount: number;
+  children?: KnowledgeMapNode[];
+}
+
+export interface StudyPlanTask {
+  id: string;
+  planId?: string;
+  userId: string;
+  dayOfWeek: string;
+  scheduledDate?: string;
+  subject: string;
+  topic: string;
+  taskType: 'READING' | 'MCQ' | 'FLASHCARD' | 'VIVA' | 'REVISION';
+  durationMinutes: number;
+  isCompleted: boolean;
+  completedAt?: string | null;
+  category?: string;
+  title?: string;
+  actionUrl?: string;
+}
+
+export interface StudyPlan {
+  id: string;
+  userId: string;
+  title: string;
+  goal: string;
+  subjects: string[];
+  availableDays: string[];
+  dailyTimeMinutes: number;
+  examDate?: string | null;
+  isActive: boolean;
+  tasks?: StudyPlanTask[];
+  createdAt: string;
+}
+
+export interface LearningRecommendation {
+  id: string;
+  type: 'FLASHCARD_DUE' | 'WEAK_CONCEPT' | 'UNREVIEWED_TOPIC' | 'PRACTICE_MCQ' | 'VIVA_PROMPT';
+  title: string;
+  description: string;
+  subject?: string;
+  topic?: string;
+  actionUrl: string;
+  actionLabel?: string;
+  priority: number | string;
+}
+
+export interface LearningStreakInfo {
+  currentStreak: number;
+  longestStreak: number;
+  studyDaysThisMonth: number;
+  lastActiveDate: string | null;
+  message: string;
+}
+
+export interface WeeklyLearningReport {
+  studyTimeMinutes: number;
+  topicsStudiedCount: number;
+  mcqsAttemptedCount: number;
+  mcqAccuracy: number;
+  flashcardsReviewedCount: number;
+  vivaSessionsCount: number;
+  completedTasksCount: number;
+  strongAreas: string[];
+  topicsNeedingRevision: string[];
+  summaryText: string;
+}
+
+export interface SpacedRepetitionSettings {
+  newCardsPerDay: number;
+  maxReviewsPerDay: number;
+  reminderEnabled: boolean;
+  preferredReminderTime: string;
+}

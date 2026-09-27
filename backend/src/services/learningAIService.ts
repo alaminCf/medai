@@ -717,3 +717,6 @@ Would you like me to walk through a detailed explanation, quiz you with a viva-s
     };
   }
 }
+
+export const learningAIService = new LearningAIService();
+export default learningAIService;

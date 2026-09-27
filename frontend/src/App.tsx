@@ -35,6 +35,17 @@ import VivaPracticePage from './pages/learning/VivaPracticePage';
 import AITutorPage from './pages/learning/AITutorPage';
 import ProgressPage from './pages/learning/ProgressPage';
 
+// Phase 7: Adaptive Learning & Smart Revision
+import TodayPage from './pages/learning/TodayPage';
+import SmartRevisionPage from './pages/learning/SmartRevisionPage';
+import AdaptiveFlashcardsPage from './pages/learning/AdaptiveFlashcardsPage';
+import AdaptiveMCQPage from './pages/learning/AdaptiveMCQPage';
+import AdaptiveVivaPage from './pages/learning/AdaptiveVivaPage';
+import MistakesBankPage from './pages/learning/MistakesBankPage';
+import KnowledgeMapPage from './pages/learning/KnowledgeMapPage';
+import StudyPlanPage from './pages/learning/StudyPlanPage';
+import SubjectDetailPage from './pages/learning/SubjectDetailPage';
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -102,6 +113,18 @@ export default function App() {
         <Route path="/viva" element={<VivaPracticePage />} />
         <Route path="/ai-tutor" element={<AITutorPage />} />
         <Route path="/progress" element={<ProgressPage />} />
+
+        {/* Phase 7: Adaptive Learning + Smart Revision Routes */}
+        <Route path="/today" element={<TodayPage />} />
+        <Route path="/revision" element={<SmartRevisionPage />} />
+        <Route path="/flashcards/review" element={<AdaptiveFlashcardsPage />} />
+        <Route path="/mcq/adaptive" element={<AdaptiveMCQPage />} />
+        <Route path="/viva/adaptive" element={<AdaptiveVivaPage />} />
+        <Route path="/progress/mistakes" element={<MistakesBankPage />} />
+        <Route path="/progress/knowledge-map" element={<KnowledgeMapPage />} />
+        <Route path="/study-plan" element={<StudyPlanPage />} />
+        <Route path="/subjects/:subject" element={<SubjectDetailPage />} />
+        <Route path="/subjects/:subject/topics/:topic" element={<SubjectDetailPage />} />
 
         <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
       </Route>
