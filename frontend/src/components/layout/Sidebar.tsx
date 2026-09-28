@@ -26,7 +26,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const clinicalItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/cases', icon: Stethoscope, label: 'Patients' },
+  { to: '/cases', icon: Stethoscope, label: 'AI Patients' },
   { to: '/exams', icon: GraduationCap, label: 'OSCE / Exams' },
   { to: '/history', icon: History, label: 'Session History' },
 ];
@@ -74,7 +74,7 @@ export default function Sidebar() {
           </div>
           <div>
             <p className="font-bold text-navy-900 text-sm leading-tight">Techboloy Med</p>
-            <p className="text-[10px] text-gray-400 font-medium">Virtual Patient & Academic Hub</p>
+            <p className="text-[10px] text-gray-400 font-medium">AI Patient & Academic Hub</p>
           </div>
         </div>
       </div>

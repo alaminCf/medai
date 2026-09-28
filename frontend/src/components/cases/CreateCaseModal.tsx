@@ -111,8 +111,8 @@ export default function CreateCaseModal({ isOpen, onClose, onCreated }: CreateCa
               <Sparkles className="w-5 h-5 text-teal-600" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-navy-900">Create / Generate Patient Topic</h2>
-              <p className="text-xs text-gray-500">Instant AI Virtual Patient clinical simulation setup</p>
+              <h2 className="text-base font-extrabold text-navy-900">Create / Generate AI Patient Topic</h2>
+              <p className="text-xs text-gray-500">Instant AI Patient clinical simulation setup</p>
             </div>
           </div>
           <button
@@ -245,7 +245,7 @@ export default function CreateCaseModal({ isOpen, onClose, onCreated }: CreateCa
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-800 block mb-1.5">Patient Gender</label>
+                <label className="text-xs font-bold text-gray-800 block mb-1.5">AI Patient Gender</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['Male', 'Female'] as const).map((g) => (
                     <button
@@ -272,7 +272,7 @@ export default function CreateCaseModal({ isOpen, onClose, onCreated }: CreateCa
                 Automatic Clinical Synthesis:
               </p>
               <p className="text-[11px] text-teal-800/90 leading-relaxed">
-                The platform will automatically generate full patient demographics, realistic onset, symptoms, medical history, medications, allergies, and objective grading rubrics.
+                The platform will automatically generate full AI patient demographics, realistic onset, symptoms, medical history, medications, allergies, and objective grading rubrics.
               </p>
             </div>
           </form>
@@ -302,7 +302,7 @@ export default function CreateCaseModal({ isOpen, onClose, onCreated }: CreateCa
             ) : (
               <>
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Generate & Connect Patient</span>
+                <span>Generate & Connect AI Patient</span>
               </>
             )}
           </button>

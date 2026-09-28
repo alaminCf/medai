@@ -103,9 +103,9 @@ export default function CasesPage() {
             </span>
             <span className="text-[11px] text-gray-400 font-medium">Bilingual Voice & Text</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Patient Cases & Clinical Topics</h1>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">AI Patient Cases & Clinical Topics</h1>
           <p className="text-gray-300 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
-            Select any patient case to take a history, or create your own custom clinical topic to practice with an AI Patient immediately.
+            Select any AI patient case to take a history, or create your own custom clinical topic to practice with an AI Patient immediately.
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export default function CasesPage() {
           className="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2 active:scale-98 flex-shrink-0"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
-          <span>+ Create / Generate Patient Topic</span>
+          <span>+ Create / Generate AI Patient Topic</span>
         </button>
       </div>
 
@@ -143,7 +143,7 @@ export default function CasesPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search symptoms, diseases, or patient names..."
+            placeholder="Search symptoms, diseases, or AI patient names..."
             className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -182,7 +182,7 @@ export default function CasesPage() {
           <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <h3 className="font-bold text-gray-800 text-base mb-1">No matching clinical topics found</h3>
           <p className="text-gray-400 text-xs mb-4">
-            Try adjusting your search filters or generate a custom patient case.
+            Try adjusting your search filters or generate a custom AI patient case.
           </p>
           <button
             onClick={() => setIsModalOpen(true)}

@@ -249,7 +249,7 @@ export default function OSCEResultPage() {
                       <div>
                         <h3 className="text-base font-bold text-gray-900">{st.title}</h3>
                         <p className="text-xs text-gray-400">
-                          Patient: {st.patient?.patientName || st.patient?.name || 'Standardized Patient'}
+                          AI Patient: {st.patient?.patientName || st.patient?.name || 'Standardized AI Patient'}
                         </p>
                       </div>
                     </div>
@@ -484,7 +484,7 @@ export default function OSCEResultPage() {
                         className={`flex flex-col ${isCandidate ? 'items-end' : 'items-start'}`}
                       >
                         <span className="text-[10px] text-gray-400 px-1 mb-0.5">
-                          {isCandidate ? 'Candidate' : 'Patient'}
+                          {isCandidate ? 'Candidate' : 'AI Patient'}
                         </span>
                         <div
                           className={`p-3.5 rounded-2xl text-xs max-w-[85%] leading-relaxed ${

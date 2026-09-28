@@ -28,9 +28,9 @@ const features = [
 ];
 
 const steps = [
-  { number: '01', title: 'Select a Patient Case', description: 'Choose from our library of realistic patient scenarios.' },
-  { number: '02', title: 'Meet Your Patient', description: 'Review patient details and learning objectives before you begin.' },
-  { number: '03', title: 'Conduct the Consultation', description: 'Ask history questions and receive natural patient responses.' },
+  { number: '01', title: 'Select an AI Patient Case', description: 'Choose from our library of realistic AI patient scenarios.' },
+  { number: '02', title: 'Meet Your AI Patient', description: 'Review AI patient details and learning objectives before you begin.' },
+  { number: '03', title: 'Conduct Consultation', description: 'Ask history questions and receive natural AI patient responses.' },
   { number: '04', title: 'Review Your Session', description: 'Read back through your consultation transcript and reflect on your practice.' },
 ];
 
@@ -61,7 +61,7 @@ export default function LandingPage() {
             Medical Education Platform
           </div>
           <h1 className="text-5xl font-bold text-gray-900 leading-tight mb-5 tracking-tight">
-            Meet Your Patient.<br />
+            Meet Your AI Patient.<br />
             <span className="text-navy-900">Practice Your Clinical Skills.</span>
           </h1>
           <p className="text-lg text-gray-500 mb-8 leading-relaxed max-w-2xl">
@@ -121,7 +121,7 @@ export default function LandingPage() {
           </div>
           <div className="border-t border-gray-100 px-5 py-3 bg-white flex items-center gap-3">
             <div className="flex-1 bg-gray-50 rounded-lg px-4 py-2.5 text-sm text-gray-400 border border-gray-200">
-              Ask the patient a question...
+              Ask the AI patient a question...
             </div>
             <button className="w-9 h-9 bg-navy-900 rounded-lg flex items-center justify-center flex-shrink-0">
               <ChevronRight className="w-4 h-4 text-white" />

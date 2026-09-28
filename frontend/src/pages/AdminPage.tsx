@@ -183,7 +183,7 @@ export default function AdminPage() {
           ))
         ) : [
           { label: 'Total Users', value: stats?.totalUsers ?? 0, icon: Users, color: 'text-blue-600 bg-blue-50' },
-          { label: 'Patient Cases', value: stats?.totalCases ?? 0, icon: BookOpen, color: 'text-green-600 bg-green-50' },
+          { label: 'AI Patient Cases', value: stats?.totalCases ?? 0, icon: BookOpen, color: 'text-green-600 bg-green-50' },
           { label: 'Total Consultations', value: stats?.totalSessions ?? 0, icon: Activity, color: 'text-purple-600 bg-purple-50' },
           { label: 'Active Sessions', value: stats?.activeSessions ?? 0, icon: Activity, color: 'text-amber-600 bg-amber-50' },
         ].map(({ label, value, icon: Icon, color }) => (

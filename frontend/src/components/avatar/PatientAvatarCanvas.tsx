@@ -130,7 +130,7 @@ export default function PatientAvatarCanvas({
       {!isInitialized && !initError && (
         <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-xs flex flex-col items-center justify-center gap-3 z-10">
           <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-semibold text-slate-200">Preparing Virtual Patient Avatar...</p>
+          <p className="text-sm font-semibold text-slate-200">Preparing AI Patient Avatar...</p>
           <p className="text-xs text-slate-400">Loading 3D anatomical model & clinical environment</p>
         </div>
       )}
@@ -171,7 +171,7 @@ export default function PatientAvatarCanvas({
             {avatarState === 'listening' ? (
               <>
                 <Radio className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
-                <span>Patient is listening...</span>
+                <span>AI Patient is listening...</span>
               </>
             ) : avatarState === 'speaking' ? (
               <>
@@ -181,7 +181,7 @@ export default function PatientAvatarCanvas({
                   <span className="w-0.5 bg-teal-400 rounded-full animate-pulse h-2" style={{ animationDelay: '200ms' }} />
                   <span className="w-0.5 bg-teal-400 rounded-full animate-pulse h-3" style={{ animationDelay: '150ms' }} />
                 </span>
-                <span>Patient is speaking</span>
+                <span>AI Patient is speaking</span>
               </>
             ) : avatarState === 'thinking' ? (
               <>
@@ -195,7 +195,7 @@ export default function PatientAvatarCanvas({
             ) : (
               <>
                 <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span>Patient ready</span>
+                <span>AI Patient ready</span>
               </>
             )}
           </div>

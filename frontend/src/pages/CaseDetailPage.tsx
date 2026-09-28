@@ -229,7 +229,7 @@ export default function CaseDetailPage() {
               {selectedMode === 'voice'
                 ? selectedLanguage === 'bn'
                   ? 'রোগীর সাথে মাইক্রোফোনের মাধ্যমে বাংলায় সরাসরি কথা বলতে পারবেন। রোগী বাংলায় উত্তর দেবে।'
-                  : 'Speak naturally to the patient using your microphone. The patient will respond verbally in English.'
+                  : 'Speak naturally to the AI patient using your microphone. The AI patient will respond verbally in English.'
                 : 'Practice taking history via keyboard chat. Voice fallback remains accessible.'}
             </p>
           </div>
@@ -237,7 +237,7 @@ export default function CaseDetailPage() {
           {/* Description */}
           {patientCase.description && (
             <div>
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">About This Case</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">About This AI Patient Case</p>
               <p className="text-sm text-gray-600 leading-relaxed">{patientCase.description}</p>
             </div>
           )}
@@ -268,7 +268,7 @@ export default function CaseDetailPage() {
             <div>
               <p className="text-xs font-semibold text-blue-800 mb-1">Educational Clinical Simulation</p>
               <p className="text-xs text-blue-600 leading-relaxed">
-                Techboloy Med is an educational clinical simulation and does not replace supervised medical training or professional medical judgment. Focus on structured history taking (SOCRATES).
+                Techboloy Med is an educational AI patient clinical simulation and does not replace supervised medical training or professional medical judgment. Focus on structured history taking (SOCRATES).
               </p>
             </div>
           </div>
@@ -294,7 +294,7 @@ export default function CaseDetailPage() {
             ) : (
               <>
                 {selectedMode === 'voice' ? <Mic className="w-5 h-5 text-teal-300" /> : <Stethoscope className="w-5 h-5" />}
-                {selectedMode === 'voice' ? 'Start Voice Consultation' : 'Start Text Consultation'}
+                {selectedMode === 'voice' ? 'Start Voice AI Patient Consultation' : 'Start Text AI Patient Consultation'}
               </>
             )}
           </button>

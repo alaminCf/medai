@@ -661,7 +661,7 @@ export default function PracticeSessionPage() {
                         onClick={() => handleQuickAsk(q)}
                         disabled={isSending || voiceState === 'listening' || voiceState === 'thinking'}
                         className="flex-shrink-0 bg-slate-800/90 hover:bg-teal-900/40 border border-slate-700/70 hover:border-teal-500/50 text-slate-300 hover:text-teal-200 px-3 py-1.5 rounded-full transition-all text-[11px] flex items-center gap-1.5 disabled:opacity-40"
-                        title={mode === 'text' ? 'Insert into input' : 'Ask patient directly'}
+                        title={mode === 'text' ? 'Insert into input' : 'Ask AI patient directly'}
                       >
                         <span>{q}</span>
                       </button>
@@ -705,7 +705,7 @@ export default function PracticeSessionPage() {
                         className="flex items-center gap-3 px-8 py-4 rounded-full bg-indigo-600 text-white font-bold opacity-80 cursor-not-allowed"
                       >
                         <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span className="text-base tracking-wide">Patient is thinking...</span>
+                        <span className="text-base tracking-wide">AI Patient is thinking...</span>
                       </button>
                     ) : voiceState === 'speaking' ? (
                       <button
@@ -714,7 +714,7 @@ export default function PracticeSessionPage() {
                         className="flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/30 transition-all transform hover:scale-105"
                       >
                         <Square className="w-5 h-5 fill-white" />
-                        <span className="text-base tracking-wide">Patient is speaking (Tap to Interrupt)</span>
+                        <span className="text-base tracking-wide">AI Patient is speaking (Tap to Interrupt)</span>
                       </button>
                     ) : (
                       <button
@@ -738,7 +738,7 @@ export default function PracticeSessionPage() {
                       onClick={handleReplayAudio}
                       disabled={voiceState === 'listening' || isSending}
                       className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800 disabled:opacity-30"
-                      title="Replay Last Patient Voice"
+                      title="Replay Last AI Patient Voice"
                     >
                       <RotateCcw className="w-5 h-5 text-teal-400" />
                     </button>
@@ -749,7 +749,7 @@ export default function PracticeSessionPage() {
                     <span>
                       {isBangla
                         ? 'মাইক্রোফোনে স্বাভাবিক বাংলায় কথা বলুন। রোগী বাংলায় উত্তর দেবে।'
-                        : 'Speak naturally to your patient. Avatar lip-syncs with speech in real-time.'}
+                        : 'Speak naturally to your AI patient. Avatar lip-syncs with speech in real-time.'}
                     </span>
                     <button
                       type="button"
@@ -788,7 +788,7 @@ export default function PracticeSessionPage() {
                       placeholder={
                         isBangla
                           ? 'রোগীকে বাংলায় প্রশ্ন করুন... (Enter চাপুন)'
-                          : 'Ask the patient a question... (Press Enter to send)'
+                          : 'Ask the AI patient a question... (Press Enter to send)'
                       }
                       rows={1}
                       className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 focus:border-teal-500 focus:outline-hidden resize-none min-h-[44px] max-h-32 text-sm"
@@ -842,7 +842,7 @@ export default function PracticeSessionPage() {
                     >
                       <div className="flex items-center gap-1.5 mb-1 text-[11px] text-slate-400">
                         <span className="font-semibold text-slate-300">
-                          {msg.sender === 'student' ? 'You (Doctor)' : pc.patientName}
+                          {msg.sender === 'student' ? 'You (Doctor)' : `AI Patient (${pc.patientName})`}
                         </span>
                         <span>·</span>
                         <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
@@ -892,9 +892,9 @@ export default function PracticeSessionPage() {
       {showEndConfirm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-slate-200">
-            <h3 className="font-bold text-white text-lg mb-2">End Clinical Consultation?</h3>
+            <h3 className="font-bold text-white text-lg mb-2">End AI Patient Consultation?</h3>
             <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              This will conclude your consultation with {pc.patientName}. You will be able to review the full transcript and consultation metrics in Session History.
+              This will conclude your consultation with AI Patient {pc.patientName}. You will be able to review the full transcript and consultation metrics in Session History.
             </p>
             <div className="flex gap-3">
               <button

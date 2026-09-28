@@ -37,9 +37,9 @@ export default function SessionHistoryPage() {
         <div className="card p-12 text-center">
           <History className="w-10 h-10 text-gray-200 mx-auto mb-3" />
           <p className="font-semibold text-gray-700 mb-1">No consultations yet</p>
-          <p className="text-sm text-gray-400 mb-4">Start your first virtual patient practice session to build your clinical history.</p>
+          <p className="text-sm text-gray-400 mb-4">Start your first AI patient practice session to build your clinical history.</p>
           <Link to="/cases" className="btn-primary">
-            Browse Patient Cases
+            Browse AI Patient Cases
           </Link>
         </div>
       ) : (

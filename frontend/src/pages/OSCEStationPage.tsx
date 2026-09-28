@@ -371,7 +371,7 @@ export default function OSCEStationPage() {
   // Mock patientCase object for PatientAvatarCanvas
   const mockPatientCase: PatientCase = {
     id: currentStation?.patient?.id || 'exam-patient',
-    title: currentStation?.title || 'OSCE Station Patient',
+    title: currentStation?.title || 'OSCE Station AI Patient',
     slug: 'osce-patient',
     category: 'Clinical OSCE',
     difficulty: 'intermediate',
@@ -441,7 +441,7 @@ export default function OSCEStationPage() {
               <div className="pt-3 border-t border-slate-700/60 text-xs text-slate-400 space-y-1">
                 <p>• Introduce yourself appropriately and establish rapport.</p>
                 <p>• Gather relevant focused history and systematically clarify symptoms.</p>
-                <p>• The patient does not expect a final diagnostic conclusion in this station.</p>
+                <p>• The AI patient does not expect a final diagnostic conclusion in this station.</p>
               </div>
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function OSCEStationPage() {
                       className={`flex flex-col ${isStudent ? 'items-end' : 'items-start'}`}
                     >
                       <span className="text-[10px] text-slate-500 mb-0.5 px-1 font-medium">
-                        {isStudent ? 'Candidate (You)' : 'Patient'}
+                        {isStudent ? 'Candidate (You)' : 'AI Patient'}
                       </span>
                       <div
                         className={`p-3 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
@@ -694,7 +694,7 @@ export default function OSCEStationPage() {
                 ? 'bg-emerald-500 text-slate-950'
                 : 'bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700'
             }`}
-            title={isListening ? 'Stop Recording' : 'Speak to Patient'}
+            title={isListening ? 'Stop Recording' : 'Speak to AI Patient'}
           >
             {isListening ? <Mic className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </button>
