@@ -2,11 +2,29 @@ import { useEffect, useState } from 'react';
 import { casesService } from '../services/casesService';
 import type { PatientCase, CaseDifficulty } from '../types';
 import { DifficultyBadge } from '../utils/formatters';
-import { Search, Clock, User, ChevronRight, BookOpen } from 'lucide-react';
+import {
+  Search,
+  Clock,
+  Plus,
+  Stethoscope,
+  Sparkles,
+  BookOpen,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import CreateCaseModal from '../components/cases/CreateCaseModal';
+
+const specialties = [
+  'All',
+  'Cardiology',
+  'Respiratory',
+  'Gastroenterology',
+  'Neurology',
+  'Infectious Disease',
+  'General Medicine',
+];
 
 const difficulties: Array<{ value: 'all' | CaseDifficulty; label: string }> = [
-  { value: 'all', label: 'All Cases' },
+  { value: 'all', label: 'All Levels' },
   { value: 'beginner', label: 'Beginner' },
   { value: 'intermediate', label: 'Intermediate' },
   { value: 'advanced', label: 'Advanced' },
@@ -16,48 +34,127 @@ export default function CasesPage() {
   const navigate = useNavigate();
   const [cases, setCases] = useState<PatientCase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | CaseDifficulty>('all');
+  const [specialtyFilter, setSpecialtyFilter] = useState('All');
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | CaseDifficulty>('all');
   const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [connectingCaseId, setConnectingCaseId] = useState<string | null>(null);
 
   useEffect(() => {
-    casesService.getCases().then(setCases).finally(() => setIsLoading(false));
+    loadCases();
   }, []);
 
-  const filtered = cases.filter(c => {
-    const matchDiff = filter === 'all' || c.difficulty === filter;
+  const loadCases = async () => {
+    try {
+      setIsLoading(true);
+      const data = await casesService.getCases();
+      setCases(data);
+    } catch (err) {
+      console.error('Failed to load cases:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleQuickConnect = async (caseItem: PatientCase, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setConnectingCaseId(caseItem.id);
+      const { sessionId } = await casesService.quickConnect({
+        caseId: caseItem.id,
+        language: (caseItem.voiceLanguage as any) || 'en',
+        voiceEnabled: true,
+        avatarEnabled: true,
+      });
+      navigate(`/session/${sessionId}`);
+    } catch (err) {
+      console.error('Failed to quick connect:', err);
+      // Fallback: navigate to case detail
+      navigate(`/cases/${caseItem.id}`);
+    } finally {
+      setConnectingCaseId(null);
+    }
+  };
+
+  const filtered = cases.filter((c) => {
+    const matchSpecialty =
+      specialtyFilter === 'All' ||
+      c.category.toLowerCase().includes(specialtyFilter.toLowerCase());
+    const matchDiff = difficultyFilter === 'all' || c.difficulty === difficultyFilter;
     const q = search.toLowerCase();
-    const matchSearch = !q || c.patientName.toLowerCase().includes(q) ||
-      c.title.toLowerCase().includes(q) || c.chiefComplaint.toLowerCase().includes(q) ||
+    const matchSearch =
+      !q ||
+      c.patientName.toLowerCase().includes(q) ||
+      c.title.toLowerCase().includes(q) ||
+      c.chiefComplaint.toLowerCase().includes(q) ||
       c.category.toLowerCase().includes(q);
-    return matchDiff && matchSearch;
+
+    return matchSpecialty && matchDiff && matchSearch;
   });
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Patient Cases</h1>
-        <p className="text-gray-500 text-sm">Select a patient case to begin your consultation.</p>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Top Banner with Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-navy-950 via-navy-900 to-teal-950 text-white p-6 sm:p-7 rounded-2xl shadow-md border border-navy-800">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[11px] bg-teal-500/20 text-teal-300 font-extrabold px-2.5 py-0.5 rounded-full border border-teal-500/30">
+              SIMULATED CLINICAL PATIENTS
+            </span>
+            <span className="text-[11px] text-gray-400 font-medium">Bilingual Voice & Text</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Patient Cases & Clinical Topics</h1>
+          <p className="text-gray-300 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
+            Select any patient case to take a history, or create your own custom clinical topic to practice with an AI Patient immediately.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="px-5 py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-black rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center justify-center gap-2 active:scale-98 flex-shrink-0"
+        >
+          <Plus className="w-4 h-4 stroke-[3]" />
+          <span>+ Create / Generate Patient Topic</span>
+        </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* Specialty Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        {specialties.map((s) => (
+          <button
+            key={s}
+            onClick={() => setSpecialtyFilter(s)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+              specialtyFilter === s
+                ? 'bg-teal-600 text-white shadow-xs'
+                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* Search and Difficulty Filter Controls */}
+      <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search cases..."
-            className="input-field pl-9"
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search symptoms, diseases, or patient names..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
-        <div className="flex gap-1.5">
-          {difficulties.map(d => (
+
+        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
+          {difficulties.map((d) => (
             <button
               key={d.value}
-              onClick={() => setFilter(d.value)}
-              className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
-                filter === d.value
+              onClick={() => setDifficultyFilter(d.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                difficultyFilter === d.value
                   ? 'bg-navy-900 text-white'
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
@@ -68,66 +165,118 @@ export default function CasesPage() {
         </div>
       </div>
 
-      {/* Cases grid */}
+      {/* Cases Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="card p-5 animate-pulse">
-              <div className="h-4 bg-gray-100 rounded w-1/3 mb-3" />
-              <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
-              <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card p-5 animate-pulse rounded-2xl border border-gray-100">
+              <div className="h-5 bg-gray-100 rounded w-1/2 mb-3" />
+              <div className="h-3 bg-gray-100 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-gray-100 rounded w-1/3 mb-4" />
+              <div className="h-8 bg-gray-100 rounded-xl" />
             </div>
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card p-12 text-center">
-          <BookOpen className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">No cases found. Try adjusting your search.</p>
+        <div className="card p-12 text-center rounded-2xl border border-gray-200">
+          <BookOpen className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="font-bold text-gray-800 text-base mb-1">No matching clinical topics found</h3>
+          <p className="text-gray-400 text-xs mb-4">
+            Try adjusting your search filters or generate a custom patient case.
+          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl transition inline-flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Generate This Case with AI</span>
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(c => <CaseCard key={c.id} patientCase={c} onClick={() => navigate(`/cases/${c.id}`)} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map((c) => (
+            <div
+              key={c.id}
+              onClick={() => navigate(`/cases/${c.id}`)}
+              className="card p-5 rounded-2xl border border-gray-200 hover:border-teal-400/80 transition-all duration-200 hover:shadow-md cursor-pointer group flex flex-col justify-between"
+            >
+              <div>
+                {/* Header: Patient Name & Badges */}
+                <div className="flex items-start justify-between gap-3 mb-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-navy-900 to-teal-800 text-white font-bold flex items-center justify-center flex-shrink-0 text-sm shadow-2xs">
+                      {c.patientName.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-navy-900 text-sm group-hover:text-teal-700 transition">
+                        {c.patientName}
+                      </h3>
+                      <p className="text-[11px] text-gray-400">
+                        {c.patientAge} yrs · {c.patientGender}
+                      </p>
+                    </div>
+                  </div>
+                  <DifficultyBadge difficulty={c.difficulty} />
+                </div>
+
+                {/* Case Title */}
+                <h4 className="font-bold text-gray-900 text-xs sm:text-sm mb-1 line-clamp-1">{c.title}</h4>
+
+                {/* Chief Complaint Quote */}
+                <div className="mb-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">
+                    Chief Complaint:
+                  </p>
+                  <p className="text-xs text-gray-700 italic line-clamp-2">"{c.chiefComplaint}"</p>
+                </div>
+
+                {/* Tags */}
+                <div className="flex items-center gap-2 mb-4 text-[11px]">
+                  <span className="font-semibold text-teal-800 bg-teal-50 border border-teal-100 px-2 py-0.5 rounded-md">
+                    {c.category}
+                  </span>
+                  <span className="text-gray-400 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> {c.estimatedDuration} min
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-gray-400 group-hover:text-navy-900 font-medium">
+                  Details →
+                </span>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleQuickConnect(c, e)}
+                  disabled={connectingCaseId === c.id}
+                  className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5"
+                >
+                  {connectingCaseId === c.id ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      <span>Connect Now</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
-    </div>
-  );
-}
 
-function CaseCard({ patientCase: c, onClick }: { patientCase: PatientCase; onClick: () => void }) {
-  const objectives: string[] = (() => {
-    try { return JSON.parse(c.clinicalData?.learningObjectives || '[]'); } catch { return []; }
-  })();
-
-  return (
-    <div onClick={onClick} className="card-hover p-5 cursor-pointer group">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-navy-50 rounded-xl flex items-center justify-center flex-shrink-0">
-            <span className="text-base font-bold text-navy-800">{c.patientName.charAt(0)}</span>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{c.patientName}</h3>
-            <p className="text-xs text-gray-400">{c.patientAge} years · {c.patientGender}</p>
-          </div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-navy-600 transition-colors mt-1" />
-      </div>
-
-      <div className="mb-3">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Chief Complaint</p>
-        <p className="text-sm text-gray-700 leading-relaxed">"{c.chiefComplaint}"</p>
-      </div>
-
-      <div className="flex items-center gap-3 mb-3">
-        <DifficultyBadge difficulty={c.difficulty} />
-        <span className="text-xs text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">{c.category}</span>
-      </div>
-
-      <div className="flex items-center justify-between text-xs text-gray-400 pt-3 border-t border-gray-50">
-        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{c.estimatedDuration} min</span>
-        <span className="flex items-center gap-1"><User className="w-3 h-3" />{objectives.length} objectives</span>
-        <span className="font-medium text-navy-700 group-hover:underline">Start Consultation →</span>
-      </div>
+      {/* Create Case Modal */}
+      <CreateCaseModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreated={loadCases}
+      />
     </div>
   );
 }

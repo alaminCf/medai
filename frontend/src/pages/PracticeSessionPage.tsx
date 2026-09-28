@@ -32,7 +32,7 @@ import {
   Minimize2,
   ChevronDown,
   ChevronUp,
-  
+  Sparkles,
 } from 'lucide-react';
 import { getApiError } from '../services/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -65,6 +65,57 @@ export default function PracticeSessionPage() {
   // UI Modes
   const [focusMode, setFocusMode] = useState(false);
   const [showTranscript, setShowTranscript] = useState(true);
+  const [showSuggestions, setShowSuggestions] = useState(true);
+  const [suggestionCategory, setSuggestionCategory] = useState<'socrates' | 'history' | 'systems'>('socrates');
+
+  const SUGGESTED_QUESTIONS = {
+    en: {
+      socrates: [
+        'When did your symptoms begin?',
+        'Where exactly does it hurt or bother you?',
+        'Does the pain spread to your arm, neck, or back?',
+        'On a scale of 1-10, how severe is it?',
+        'What makes the symptom better or worse?',
+        'How would you describe the feeling (sharp, dull, throbbing)?',
+      ],
+      history: [
+        'Do you have any past medical conditions like diabetes or high BP?',
+        'What medications or inhalers do you take regularly?',
+        'Do you have any known drug or food allergies?',
+        'Has anyone in your family had similar health problems?',
+        'Do you smoke, vape, or drink alcohol?',
+      ],
+      systems: [
+        'Have you noticed any fever, chills, or night sweats?',
+        'Any shortness of breath, wheezing, or cough?',
+        'Any nausea, vomiting, or changes in bowel habits?',
+        'Have you felt dizzy, lightheaded, or unusually tired?',
+      ],
+    },
+    bn: {
+      socrates: [
+        'আপনার এই সমস্যা কবে থেকে শুরু হয়েছে?',
+        'ব্যথাটা ঠিক কোথায় হচ্ছে আঙুল দিয়ে দেখাবেন?',
+        'ব্যথা কি অন্য কোথাও যেমন হাত, গলা বা পিঠে ছড়িয়ে পড়ে?',
+        '১ থেকে ১০ এর স্কেলে আপনার কষ্ট কতটা তীব্র?',
+        'কী করলে কষ্ট কমে বা বেড়ে যায়?',
+        'ব্যথাটা কেমন ধরনের — তীব্র, ভোঁতা, নাকি ভারী কিছু চেপে বসার মতো?',
+      ],
+      history: [
+        'আপনার কি ডায়াবেটিস, প্রেসার বা অন্য কোনো আগের রোগ আছে?',
+        'আপনি কি নিয়মিত কোনো ওষুধ বা ইনহেলার ব্যবহার করেন?',
+        'কোনো ওষুধ বা খাবারে কি আপনার অ্যালার্জি আছে?',
+        'পরিবারে কারও কি এই ধরনের সমস্যা আছে?',
+        'আপনি কি ধূমপান বা তামাকজাতীয় কিছু সেবন করেন?',
+      ],
+      systems: [
+        'আপনার কি জ্বর, কাঁপুনি বা রাতে ঘাম হচ্ছে?',
+        'কোনো শ্বাসকষ্ট, কাশি বা বুকে চাপ অনুভব করছেন?',
+        'বমি ভাব, বমি বা খাওয়ার রুচি কমে গেছে কি?',
+        'মাথা ঘোরা বা অতিরিক্ত ক্লান্তি লাগছে?',
+      ],
+    },
+  };
 
   // Consultation Timer
   const [elapsed, setElapsed] = useState(0);
@@ -255,6 +306,18 @@ export default function PracticeSessionPage() {
   // Stop listening manually
   const stopListening = () => {
     speechRecognitionService.stopListening();
+  };
+
+  // Quick ask question from suggested clinical prompts
+  const handleQuickAsk = (questionText: string) => {
+    if (isSending || !isActive) return;
+    if (mode === 'text') {
+      setInput(questionText);
+      inputRef.current?.focus();
+    } else {
+      // Direct voice consultation ask
+      handleSendVoiceMessage(questionText);
+    }
   };
 
   // Handle Voice Message Submission
@@ -535,6 +598,76 @@ export default function PracticeSessionPage() {
               <div className="flex-1">
                 <span className="font-bold text-emerald-400">Hearing speech: </span>
                 <span className="italic">"{interimTranscript}"</span>
+              </div>
+            </div>
+          )}
+
+          {/* Clinical Guidance: Quick Suggested SOCRATES Questions */}
+          {isActive && (
+            <div className="bg-slate-900/95 border-t border-slate-800/80 px-4 py-2.5 z-20">
+              <div className="max-w-2xl mx-auto">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-400">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>{isBangla ? 'সহায়ক ক্লিনিক্যাল প্রশ্ন (1-Click Ask)' : 'Suggested Clinical Inquiries'}</span>
+                    </span>
+                    <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setSuggestionCategory('socrates')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          suggestionCategory === 'socrates' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        SOCRATES
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestionCategory('history')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          suggestionCategory === 'history' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {isBangla ? 'পূর্ব ইতিহাস' : 'Past History'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSuggestionCategory('systems')}
+                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
+                          suggestionCategory === 'systems' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        {isBangla ? 'উপসর্গ পর্যালোচনা' : 'System Review'}
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowSuggestions(!showSuggestions)}
+                    className="text-[11px] text-slate-500 hover:text-slate-300 font-medium flex items-center gap-1"
+                  >
+                    <span>{showSuggestions ? (isBangla ? 'লুকান' : 'Hide') : (isBangla ? 'দেখান' : 'Show')}</span>
+                    {showSuggestions ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                  </button>
+                </div>
+
+                {showSuggestions && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+                    {(isBangla ? SUGGESTED_QUESTIONS.bn : SUGGESTED_QUESTIONS.en)[suggestionCategory].map((q, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleQuickAsk(q)}
+                        disabled={isSending || voiceState === 'listening' || voiceState === 'thinking'}
+                        className="flex-shrink-0 bg-slate-800/90 hover:bg-teal-900/40 border border-slate-700/70 hover:border-teal-500/50 text-slate-300 hover:text-teal-200 px-3 py-1.5 rounded-full transition-all text-[11px] flex items-center gap-1.5 disabled:opacity-40"
+                        title={mode === 'text' ? 'Insert into input' : 'Ask patient directly'}
+                      >
+                        <span>{q}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
