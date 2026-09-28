@@ -508,7 +508,14 @@ export default function AITutorPage() {
   };
 
   // Interactive Detection of Option Badges (A, B, C, D)
-  const renderMessageContent = (content: string) => {
+  const renderMessageContent = (content: string, isUser = false) => {
+    if (isUser) {
+      return (
+        <p className="text-xs sm:text-sm leading-relaxed text-white font-medium whitespace-pre-wrap">
+          {content}
+        </p>
+      );
+    }
     const lines = content.split('\n');
     return lines.map((line, idx) => {
       // Headings
@@ -882,17 +889,17 @@ export default function AITutorPage() {
                 >
                   {/* Sender Header */}
                   <div className="flex items-center gap-1.5 mb-1.5 text-[11px]">
-                    <span className="font-bold">
+                    <span className={`font-bold ${msg.role === 'USER' ? 'text-teal-300' : 'text-navy-900'}`}>
                       {msg.role === 'USER' ? 'You (Medical Student)' : 'AI Medical Professor'}
                     </span>
-                    <span className="text-gray-400">·</span>
-                    <span className="text-gray-400">
+                    <span className={msg.role === 'USER' ? 'text-slate-300' : 'text-gray-400'}>·</span>
+                    <span className={msg.role === 'USER' ? 'text-slate-300' : 'text-gray-400'}>
                       {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
 
                   {/* Rendered content */}
-                  <div className="space-y-0.5">{renderMessageContent(msg.content)}</div>
+                  <div className="space-y-0.5">{renderMessageContent(msg.content, msg.role === 'USER')}</div>
 
                   {/* Source Reference Tag */}
                   {msg.sourceReference && (
