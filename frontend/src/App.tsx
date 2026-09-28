@@ -33,6 +33,7 @@ import FlashcardsPage from './pages/learning/FlashcardsPage';
 import MCQPracticePage from './pages/learning/MCQPracticePage';
 import VivaPracticePage from './pages/learning/VivaPracticePage';
 import AITutorPage from './pages/learning/AITutorPage';
+import AITeacherClassPage from './pages/learning/AITeacherClassPage';
 import ProgressPage from './pages/learning/ProgressPage';
 
 // Phase 7: Adaptive Learning & Smart Revision
@@ -112,6 +113,7 @@ export default function App() {
         <Route path="/mcq" element={<MCQPracticePage />} />
         <Route path="/viva" element={<VivaPracticePage />} />
         <Route path="/ai-tutor" element={<AITutorPage />} />
+        <Route path="/ai-tutor/class" element={<AITeacherClassPage />} />
         <Route path="/progress" element={<ProgressPage />} />
 
         {/* Phase 7: Adaptive Learning + Smart Revision Routes */}

@@ -337,4 +337,209 @@ router.delete('/conversations/:id', async (req: AuthRequest, res: Response): Pro
   }
 });
 
+
+// 7. POST /api/tutor/teacher/start-lesson - Phase 7.5: AI Avatar Classroom Lesson Engine
+router.post('/teacher/start-lesson', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { subject = 'General Medicine', topic = 'Clinical Pathophysiology', language = 'en' } = req.body;
+
+    const isBangla = language === 'bn';
+
+    // Generate structured 4-step classroom curriculum
+    const steps = [
+      {
+        stepNumber: 1,
+        title: isBangla ? 'ক্লিনিক্যাল পরিচিতি ও পটভূমি' : 'Clinical Orientation & Fundamentals',
+        spokenScript: isBangla
+          ? `নমস্কার! আজকের ক্লাসে আমি আপনাদের "${topic}" বিষয়ের মূল ভিত্তি এবং চিকিৎসাবিজ্ঞানে এর গুরুত্ব বিশদভাবে বোঝাব। মনোযোগ দিয়ে লক্ষ্য করুন।`
+          : `Welcome to our medical class. Today, we will explore "${topic}" from first principles. This concept is foundational in ${subject} and essential for both your ward rotations and examinations.`,
+        whiteboardNotes: [
+          isBangla ? `বিষয়: ${subject} — ${topic}` : `Core Subject: ${subject} — ${topic}`,
+          isBangla ? 'ক্লিনিক্যাল গুরুত্ব: রোগ নির্ণয় ও চিকিৎসার সঠিক পথনির্দেশ' : 'Clinical Scope: Diagnostic reasoning & hemodynamic foundation',
+          isBangla ? 'প্রথম নীতি: এনাটমি এবং ফিজিওলজির নিখুঁত সংযোগ' : 'First Principles: Integration of physiological anatomy with clinical pathology',
+        ],
+        pearl: isBangla
+          ? 'ক্লিনিক্যাল পার্ল: যে কোনো রোগ বুঝতে হলে আগে সাধারণ ফিজিওলজি পরিষ্কার থাকতে হবে।'
+          : `Clinical Pearl: Always anchor the clinical manifestation to the underlying ${subject} mechanism.`,
+      },
+      {
+        stepNumber: 2,
+        title: isBangla ? 'প্যাথোফিজিওলজিক্যাল মেকানিজম ও ধাপসমূহ' : 'Pathophysiological Mechanisms & Steps',
+        spokenScript: isBangla
+          ? `এখন আমরা এর মেকানিজম বা কার্যকরী প্রক্রিয়ার গভীর ধাপে প্রবেশ করব। প্রতিটি ধাপ ক্রমানুসারে বুঝুন যাতে পরীক্ষায় কখনো তালগোল না পাকায়।`
+          : `Let us now deconstruct the exact physiological sequence of "${topic}". Notice how each step drives the next, and where compensatory mechanisms attempt to maintain homeostasis.`,
+        whiteboardNotes: [
+          isBangla ? 'ধাপ ১: প্রাথমিক উদ্দীপনা বা মূল পরিবর্তন' : 'Phase 1: Initial physiological trigger or molecular event',
+          isBangla ? 'ধাপ ২: অঙ্গ ও সেলুলার প্রতিক্রিয়ার ধারাবাহিকতা' : 'Phase 2: Cellular response & organ-level mechanical progression',
+          isBangla ? 'ধাপ ৩: কম্পেনসেটরি ফিডব্যাক ও হেমোডাইনামিক ব্যালেন্স' : 'Phase 3: Compensatory neurohormonal or metabolic feedback',
+          isBangla ? 'ধাপ ৪: মেকানিজম ব্যর্থ হলে ক্লিনিক্যাল লক্ষণ প্রকাশ' : 'Phase 4: Decompensation & emergence of hallmark clinical signs',
+        ],
+        pearl: isBangla
+          ? 'পরীক্ষকের টিপ: ধারাবাহিক ধাপগুলো ধারাবাহিকভাবে উপস্থাপন করলে ভাইভাতে সর্বোচ্চ নম্বর পাওয়া যায়।'
+          : 'Examiner Tip: Never jump straight to late symptoms; describe the sequential chain of events first.',
+      },
+      {
+        stepNumber: 3,
+        title: isBangla ? 'ক্লিনিক্যাল পার্লস ও পরীক্ষার ফাঁদ' : 'Clinical Pearls & Examiner Traps',
+        spokenScript: isBangla
+          ? `এই ধাপে আমি আপনাদের বলব পরীক্ষায় সিনিয়র প্রফেসররা কোন সাধারণ ভুলগুলোতে স্টুডেন্টদের ফাঁদে ফেলেন এবং কীভাবে সেগুলো এড়িয়ে চলবেন।`
+          : `Now let us focus on what senior examiners specifically test during rounds and viva voce. Many candidates confuse the timeline and classic presentations—let us master the high-yield distinctions.`,
+        whiteboardNotes: [
+          isBangla ? 'উচ্চ-মূল্যবান বিষয়: সাধারণ ভুলের ক্ষেত্রসমূহ' : `High-Yield Nuance: Classic exam pitfalls in ${topic}`,
+          isBangla ? 'ল্যাব ও সাইন কোরিলেশন' : 'Diagnostic Pearls: Correlating physical signs with lab & imaging markers',
+          isBangla ? 'মেমোরি ট্রিক ও নেমোনিক' : 'Memory Framework: Mnemonic associations for long-term retention',
+        ],
+        pearl: isBangla
+          ? 'গোল্ডেন রুল: ক্লিনিক্যাল প্র্যাকটিসে আর্লি সাইন ধরাটাই আসল ডাক্তারি।'
+          : 'Golden Rule: Look for early compensatory signs before full-blown organ failure occurs.',
+      },
+      {
+        stepNumber: 4,
+        title: isBangla ? 'ইন্টারেক্টিভ ভাইভা ও কমপ্রিহেনশন চ্যালেঞ্জ' : 'Interactive Viva Checkpoint Challenge',
+        spokenScript: isBangla
+          ? `চমৎকার! আমরা ক্লাসের শেষ পর্যায়ে চলে এসেছি। এবার আমি আপনাকে একটি ইন্টারেক্টিভ ক্লিনিক্যাল প্রশ্ন করছি। মাইক্রোফোনে বা টেক্সটে আপনার উত্তর দিন।`
+          : `Outstanding work so far. Before we complete our classroom session, let us test your clinical grasp with this checkpoint challenge. You can answer verbally using the microphone or type below.`,
+        whiteboardNotes: [
+          isBangla ? 'ভাইভা চ্যালেঞ্জ স্ক্রিনে প্রদর্শিত' : 'Interactive Oral Viva / Checkpoint Challenge Active',
+          isBangla ? 'মাইক্রোফোনে কথা বলে উত্তর দিন' : 'Answer using voice microphone or typed submission',
+        ],
+        checkQuestion: {
+          question: isBangla
+            ? `"${topic}" বিষয়ে সবচেয়ে গুরুত্বপূর্ণ ডায়াগনস্টিক বা ফিজিওলজিক্যাল মার্কার কোনটি?`
+            : `In the context of ${topic}, what is the primary diagnostic or physiological mechanism you must confirm first?`,
+          options: [
+            isBangla ? 'একিউট ক্লিনিক্যাল সাইন ও ফোকাসড হিস্ট্রি' : 'Acute physical signs and focused hemodynamic parameters',
+            isBangla ? 'স্পেসিফিক ল্যাব বায়োমার্কার বা সেলুলার পরিবর্তন' : 'Specific confirmatory lab biomarker or cellular pathology',
+            isBangla ? 'কম্পেনসেটরি ফিডব্যাকের পর্যায় পর্যবেক্ষণ' : 'Evaluating compensatory neurohormonal response stage',
+            isBangla ? 'উপরের সবগুলোই সমন্বিতভাবে বিবেচনা করা' : 'Comprehensive integration of mechanism, signs, and labs',
+          ],
+          correctOption: isBangla
+            ? 'উপরের সবগুলোই সমন্বিতভাবে বিবেচনা করা'
+            : 'Comprehensive integration of mechanism, signs, and labs',
+          explanation: isBangla
+            ? 'সঠিক উত্তর! ক্লিনিক্যাল চিকিৎসায় একক কোনো সাইনের চেয়ে পুরো মেকানিজম সামগ্রিকভাবে বিবেচনা করাই আদর্শ চিকিৎসা পদ্ধতি।'
+            : 'Excellent! Sound clinical practice requires synthesizing the physiological mechanism, physical examination findings, and diagnostic markers together.',
+        },
+      },
+    ];
+
+    // Create a tutor conversation in Prisma
+    const conversation = await prisma.tutorConversation.create({
+      data: {
+        userId,
+        mode: 'TEACH',
+        subject,
+        topic,
+        title: `AI Teacher Class: ${topic}`,
+      },
+    });
+
+    // Save opening teacher message
+    await prisma.tutorMessage.create({
+      data: {
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: steps[0].spokenScript,
+        sourceReference: `Techboloy Med Academic Faculty — ${subject}`,
+      },
+    });
+
+    const lesson = {
+      id: `lesson-${conversation.id}`,
+      title: `${topic} (${subject})`,
+      subject,
+      topic,
+      language,
+      totalSteps: steps.length,
+      currentStep: 1,
+      steps,
+    };
+
+    res.status(201).json({
+      conversationId: conversation.id,
+      lesson,
+    });
+  } catch (error) {
+    console.error('Error starting teacher lesson:', error);
+    res.status(500).json({ error: 'Failed to start AI Teacher lesson.' });
+  }
+});
+
+// 8. POST /api/tutor/teacher/interact - Student asks question or answers checkpoint
+router.post('/teacher/interact', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { conversationId, studentMessage, stepNumber, topic, subject, language = 'en' } = req.body;
+
+    if (!conversationId || !studentMessage) {
+      res.status(400).json({ error: 'Conversation ID and message are required.' });
+      return;
+    }
+
+    const conversation = await prisma.tutorConversation.findFirst({
+      where: { id: conversationId, userId },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          take: 8,
+        },
+      },
+    });
+
+    if (!conversation) {
+      res.status(404).json({ error: 'Classroom session not found.' });
+      return;
+    }
+
+    // Save student message
+    const userMsg = await prisma.tutorMessage.create({
+      data: {
+        conversationId,
+        role: 'user',
+        content: studentMessage.trim(),
+      },
+    });
+
+    const history = conversation.messages.map((m) => ({
+      role: m.role as 'user' | 'assistant' | 'system',
+      content: m.content,
+    }));
+
+    // Generate professor reply
+    const prompt = `Student asked or answered during classroom lesson on ${topic} (${subject}) at step ${stepNumber}: "${studentMessage}".
+Please respond as an encouraging, authoritative medical professor.
+If the student asked a question, answer concisely with physiological reasoning.
+If the student answered a checkpoint question, provide supportive constructive feedback and explain the core takeaway.
+Keep response direct and engaging (2 to 4 sentences). Language: ${language === 'bn' ? 'Bengali' : 'English'}.`;
+
+    const aiRes = await LearningAIService.chatWithTutor({
+      userMessage: prompt,
+      mode: 'TEACH',
+      history,
+      subject,
+      topic,
+    });
+
+    // Save professor reply
+    const assistantMsg = await prisma.tutorMessage.create({
+      data: {
+        conversationId,
+        role: 'assistant',
+        content: aiRes.reply,
+        sourceReference: `Techboloy Med Academic Faculty — ${subject}`,
+      },
+    });
+
+    res.json({
+      studentMessage: userMsg,
+      teacherMessage: assistantMsg,
+      reply: aiRes.reply,
+    });
+  } catch (error) {
+    console.error('Error interacting with AI teacher:', error);
+    res.status(500).json({ error: 'Failed to interact with AI teacher.' });
+  }
+});
+
 export default router;

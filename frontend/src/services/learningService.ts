@@ -469,6 +469,29 @@ export const learningService = {
     const res = await api.get('/adaptive/analytics/range', { params: { timeframe } });
     return res.data;
   },
+
+  // PHASE 7.5: AI Avatar Teacher Classroom Engine
+  async startTeacherLesson(data: {
+    subject: string;
+    topic: string;
+    language?: string;
+  }): Promise<{ conversationId: string; lesson: any }> {
+    const res = await api.post('/tutor/teacher/start-lesson', data);
+    return res.data;
+  },
+
+  async interactWithTeacher(data: {
+    conversationId: string;
+    studentMessage: string;
+    stepNumber: number;
+    topic: string;
+    subject: string;
+    language?: string;
+  }): Promise<{ studentMessage: any; teacherMessage: any; reply: string }> {
+    const res = await api.post('/tutor/teacher/interact', data);
+    return res.data;
+  },
 };
 
 export default learningService;
+

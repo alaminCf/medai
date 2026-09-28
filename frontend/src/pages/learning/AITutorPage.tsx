@@ -22,6 +22,7 @@ import {
   Target,
   Layers,
   Award,
+  GraduationCap,
   ChevronDown,
   ChevronUp,
   HeartPulse,
@@ -202,6 +203,11 @@ export default function AITutorPage() {
   const [savedNoteMsgId, setSavedNoteMsgId] = useState<string | null>(null);
   const [savedCardMsgId, setSavedCardMsgId] = useState<string | null>(null);
   const [activeSpecialtyIndex, setActiveSpecialtyIndex] = useState(0);
+  // Phase 7.5 Hub State
+  const [showModeHub, setShowModeHub] = useState(true);
+  const [hubSubject, setHubSubject] = useState('Physiology');
+  const [hubTopic, setHubTopic] = useState('Cardiac Cycle');
+
   const [showExplorer, setShowExplorer] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -703,6 +709,142 @@ export default function AITutorPage() {
           </div>
         </div>
       </div>
+
+      {/* ────────────────────────────────────────────────────────
+          PHASE 7.5: LEARN WITH YOUR AI MEDICAL TUTOR (HUB)
+         ──────────────────────────────────────────────────────── */}
+      {showModeHub && (
+        <div className="mb-3 p-4 bg-gradient-to-r from-navy-900 via-slate-900 to-teal-950 text-white rounded-2xl border border-teal-800/60 shadow-lg relative overflow-hidden flex-shrink-0">
+          <div className="flex items-center justify-between pb-2.5 border-b border-white/10 mb-3">
+            <div>
+              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-400/30">
+                Phase 7.5 Interactive Classroom
+              </span>
+              <h2 className="text-base sm:text-lg font-black text-white mt-1">
+                Learn with your AI Medical Tutor
+              </h2>
+              <p className="text-xs text-slate-300">
+                Choose your medical subject, topic, and preferred teaching format.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowModeHub(false)}
+              className="text-xs text-slate-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-white/10 transition"
+            >
+              Hide Hub ▲
+            </button>
+          </div>
+
+          {/* Subject & Topic Selection */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3.5">
+            <div>
+              <label className="text-[11px] font-bold text-teal-200 block mb-1">Select Subject</label>
+              <select
+                value={hubSubject}
+                onChange={(e) => {
+                  setHubSubject(e.target.value);
+                  const found = SPECIALTY_TOPICS.find((s) => s.name === e.target.value);
+                  if (found && found.topics[0]) {
+                    setHubTopic(found.topics[0].label);
+                  }
+                }}
+                className="w-full px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-400"
+              >
+                <option value="Physiology">Physiology</option>
+                <option value="Cardiology">Cardiology</option>
+                <option value="Pulmonology">Pulmonology</option>
+                <option value="Pharmacology">Pharmacology</option>
+                <option value="Neurology">Neurology</option>
+                <option value="Pathology & Emergencies">Pathology & Emergencies</option>
+                <option value="General Medicine">General Medicine</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-teal-200 block mb-1">Topic or Medical Concept</label>
+              <input
+                type="text"
+                value={hubTopic}
+                onChange={(e) => setHubTopic(e.target.value)}
+                placeholder="e.g. Cardiac Cycle, Asthma vs COPD, STEMI ECG..."
+                className="w-full px-3 py-2 bg-slate-800/90 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-teal-400"
+              />
+            </div>
+          </div>
+
+          {/* Two Large Cards: TEXT TUTOR vs AI AVATAR TEACHER */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Card 1: TEXT TUTOR */}
+            <div className="p-3.5 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 rounded-xl transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-extrabold text-white">TEXT TUTOR</h3>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                  Ask questions and learn through conversation with evidence-based reasoning.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowModeHub(false);
+                  handleSendMessage(`Please explain ${hubTopic} in ${hubSubject} step-by-step.`);
+                }}
+                className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
+              >
+                <span>Start Text Tutor</span>
+                <Send className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Card 2: AI AVATAR TEACHER */}
+            <div className="p-3.5 bg-gradient-to-br from-teal-900/60 to-emerald-950/80 hover:from-teal-900/80 hover:to-emerald-950 border border-teal-500/60 rounded-xl transition flex flex-col justify-between relative shadow-md">
+              <span className="absolute top-2.5 right-2.5 text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-teal-400 text-slate-950">
+                3D Virtual Class
+              </span>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-teal-400 text-slate-950 flex items-center justify-center font-bold">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-sm font-extrabold text-white">AI AVATAR TEACHER</h3>
+                </div>
+                <p className="text-xs text-teal-100 leading-relaxed mb-3">
+                  Learn face-to-face with your AI teacher in a virtual medical lecture hall.
+                </p>
+              </div>
+              <Link
+                to={`/ai-tutor/class?subject=${encodeURIComponent(hubSubject)}&topic=${encodeURIComponent(hubTopic)}&lang=${tutorLanguage}`}
+                className="w-full py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-lg text-xs font-black transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Start AI Class</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Button to reopen Hub if collapsed */}
+      {!showModeHub && (
+        <div className="mb-2 flex items-center justify-between px-2 text-xs">
+          <span className="text-gray-500 font-medium">
+            Active Study Mode: <strong className="text-navy-900">{selectedMode}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowModeHub(true)}
+            className="text-teal-700 hover:text-teal-900 font-bold flex items-center gap-1"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Open Subject & AI Avatar Classroom Chooser ▼</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Split Layout: Left Navigation / Right Interactive Chat */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 pt-3 overflow-hidden">
