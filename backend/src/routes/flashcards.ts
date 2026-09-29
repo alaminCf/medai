@@ -1,9 +1,79 @@
 import { Router, Response } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
+import { LearningAIService } from '../services/learningAIService';
 
 const router = Router();
 router.use(authenticate);
+
+// POST /api/flashcards/generate - AI Flashcard Generation
+router.post('/generate', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const {
+      subject,
+      topic,
+      count = 10,
+      difficulty = 'Mixed',
+      materialId,
+      saveToDeck = true,
+      deckTitle,
+    } = req.body;
+
+    let materialText = '';
+    if (materialId) {
+      const mat = await prisma.studyMaterial.findFirst({ where: { id: materialId, userId } });
+      if (mat?.extractedText) materialText = mat.extractedText;
+    }
+
+    const diff = (difficulty ? String(difficulty).toLowerCase() : 'mixed') as 'easy' | 'medium' | 'hard' | 'mixed';
+    const cardCount = parseInt(String(count), 10) || 10;
+    const cleanSubject = subject || 'General Medicine';
+    const cleanTopic = topic || 'Core Clinical Concepts';
+
+    const generated = await LearningAIService.generateFlashcards({
+      materialText: materialText || undefined,
+      subject: cleanSubject,
+      topic: cleanTopic,
+      count: cardCount,
+      difficulty: diff,
+    });
+
+    let deck: any = null;
+    if (saveToDeck) {
+      deck = await prisma.flashcardDeck.create({
+        data: {
+          userId,
+          materialId: materialId || null,
+          title: deckTitle || `${cleanTopic || cleanSubject} High-Yield Flashcards`,
+          subject: cleanSubject,
+          topic: cleanTopic || null,
+          description: `Auto-generated ${generated.length} ${difficulty} flashcards on ${cleanTopic}.`,
+          flashcards: {
+            create: generated.map((c) => ({
+              question: c.question,
+              answer: c.answer,
+              explanation: c.explanation || null,
+              sourceReference: c.sourceReference || `${cleanSubject} - ${cleanTopic}`,
+              difficulty: c.difficulty || 'medium',
+            })),
+          },
+        },
+        include: {
+          flashcards: true,
+          _count: { select: { reviews: true } },
+        },
+      });
+      deck = { ...deck, cards: deck.flashcards };
+    }
+
+    res.status(201).json({ flashcards: generated, deck });
+  } catch (error) {
+    console.error('Flashcard generation error:', error);
+    res.status(500).json({ error: 'Failed to generate flashcards.' });
+  }
+});
+
 
 // 1. GET /api/flashcards/decks - List decks
 router.get('/decks', async (req: AuthRequest, res: Response): Promise<void> => {

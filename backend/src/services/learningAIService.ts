@@ -202,22 +202,23 @@ You MUST return a JSON object adhering exactly to this schema:
   // 3. AI FLASHCARD GENERATOR
   // ────────────────────────────────────────────────────────────────────────────
   public static async generateFlashcards(params: {
-    materialText: string;
+    materialText?: string;
+    subject?: string;
+    topic?: string;
     count: number;
     difficulty: 'easy' | 'medium' | 'hard' | 'mixed';
   }): Promise<GeneratedFlashcard[]> {
-    const { materialText, count, difficulty } = params;
+    const { materialText, subject = 'General Medicine', topic = 'Core Clinical Concepts', count, difficulty } = params;
     const openai = this.getOpenAI();
 
     if (openai) {
       try {
-        const prompt = `You are a medical school exam creator. Generate exactly ${count} active recall flashcards from the study material below.
+        const prompt = `You are a medical school exam creator. Generate exactly ${count} high-yield active recall flashcards for medical students.
+Subject: ${subject}
+Topic: ${topic}
 Difficulty: ${difficulty}
 
-STUDY MATERIAL:
-"""
-${materialText.slice(0, 9000)}
-"""
+${materialText ? `STUDY MATERIAL:\n"""\n${materialText.slice(0, 9000)}\n"""` : `Focus on core pathophysiology, clinical presentations, classic signs, diagnostic criteria, and management for: ${topic} in ${subject}.`}
 
 Return JSON format:
 {
@@ -226,7 +227,7 @@ Return JSON format:
       "question": "Clear, specific medical question targeting high-yield mechanism or fact",
       "answer": "Concise, precise answer",
       "explanation": "Brief pathophysiological or anatomical explanation",
-      "sourceReference": "Section / topic name from text",
+      "sourceReference": "${subject} - ${topic}",
       "difficulty": "easy" | "medium" | "hard"
     }
   ]
@@ -251,7 +252,7 @@ Return JSON format:
       }
     }
 
-    return this.generateDeterministicFlashcards(materialText, count);
+    return this.generateDeterministicFlashcards(materialText || '', count, subject, topic);
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -874,8 +875,62 @@ Would you like me to dive deep into a specific disease entity, generate a high-y
 
   private static generateDeterministicFlashcards(
     _materialText: string,
-    count: number
+    count: number,
+    subject?: string,
+    topic?: string
   ): GeneratedFlashcard[] {
+    const sLow = (subject || '').toLowerCase();
+    const tLow = (topic || '').toLowerCase();
+
+    // Subject/Topic tailored medical flashcards
+    if (sLow.includes('dermatolog') || tLow.includes('skin') || tLow.includes('rash') || tLow.includes('derm')) {
+      const dermPool: GeneratedFlashcard[] = [
+        {
+          question: 'What is the classic histological finding in Psoriasis and what physical sign results from scale removal?',
+          answer: 'Hyperkeratosis with parakeratosis (Munro microabscesses). Auspitz sign (pinpoint bleeding upon scraping scale).',
+          explanation: 'Epidermal hyperplasia with thinning of the suprapapillary plates exposes dilated, tortuous dermal capillaries.',
+          sourceReference: 'Dermatology: Papulosquamous Disorders',
+          difficulty: 'medium',
+        },
+        {
+          question: 'How do you differentiate Pemphigus Vulgaris from Bullous Pemphigoid clinically and histopathologically?',
+          answer: 'Pemphigus: Flaccid blisters, Nikolsky sign (+), IgG against Desmoglein-3 (intraepidermal). Pemphigoid: Tense blisters, Nikolsky sign (-), IgG against Hemidesmosomes/BP180 (subepidermal).',
+          explanation: 'Acantholysis occurs in Pemphigus due to desmosomal disruption, whereas hemidesmosome disruption causes dermal-epidermal junction separation.',
+          sourceReference: 'Dermatology: Autoimmune Bullous Diseases',
+          difficulty: 'hard',
+        },
+        {
+          question: 'What are the classic ABCDE clinical criteria for screening Cutaneous Melanoma?',
+          answer: 'A: Asymmetry, B: Border irregularity, C: Color variegation, D: Diameter > 6 mm, E: Evolving (change in size, shape, elevation).',
+          explanation: 'Early detection of melanoma drastically reduces metastasis risk; Breslow thickness is the key prognostic determinant.',
+          sourceReference: 'Dermatology: Skin Malignancies',
+          difficulty: 'easy',
+        },
+        {
+          question: 'What skin condition presents with a "Herald patch" followed by a secondary eruption in a "Christmas tree" pattern?',
+          answer: 'Pityriasis Rosea.',
+          explanation: 'Self-limiting papulosquamous eruption associated with HHV-6 and HHV-7 reactivation, oriented along Langer cleavage lines.',
+          sourceReference: 'Dermatology: Exanthems',
+          difficulty: 'easy',
+        },
+        {
+          question: 'What are the characteristic "6 Ps" of Lichen Planus and the oral mucosal finding?',
+          answer: 'Pruritic, Polygonal, Planar, Purple, Papules, Plaques. Oral finding: Wickham striae (lacy white network).',
+          explanation: 'Cell-mediated autoimmune damage to basal keratinocytes, often triggered by hepatitis C infection or medications.',
+          sourceReference: 'Dermatology: Lichenoid Dermatoses',
+          difficulty: 'medium',
+        },
+        {
+          question: 'What are the typical causative organisms and clinical presentation of Impetigo?',
+          answer: 'Staphylococcus aureus and Streptococcus pyogenes. Presentation: Honey-colored crusted erosions on the face.',
+          explanation: 'Superficial epidermal bacterial infection contagious among children, treated with topical mupirocin or oral antibiotics.',
+          sourceReference: 'Dermatology: Bacterial Skin Infections',
+          difficulty: 'easy',
+        },
+      ];
+      return dermPool.slice(0, count);
+    }
+
     const pool: GeneratedFlashcard[] = [
       {
         question: 'What event marks the beginning of Isovolumetric Ventricular Contraction?',
