@@ -1,0 +1,134 @@
+import { ClinicalFact, ClinicalIntent, LanguageMode, PatientConversationState, PatientPersonality } from './types';
+
+export class PatientDisclosureRules {
+  /**
+   * Generates a patient response for an already-disclosed fact when student asks repeatedly.
+   */
+  public static handleRepeatedFact(
+    fact: ClinicalFact,
+    language: LanguageMode,
+    personality: PatientPersonality
+  ): string {
+    const isBn = language === 'bn';
+    const isBanglish = language === 'banglish';
+    const count = fact.disclosureCount;
+
+    if (isBn) {
+      if (count === 1) {
+        return `যেমনটা আগেই বলেছিলাম ডাক্তার সাহেব, ${fact.valueBn}`;
+      } else {
+        return `জি ডাক্তার সাহেব, এটা এখনও ${fact.valueBn}। ঠিক আগের মতোই লাগছে।`;
+      }
+    } else if (isBanglish) {
+      if (count === 1) {
+        return `Ageo bolechilam doctor, ${fact.valueEn}`;
+      } else {
+        return `Ji doctor, eta ekhono ${fact.valueEn}`;
+      }
+    }
+
+    // English
+    if (count === 1) {
+      if (personality === 'anxious') {
+        return `As I mentioned earlier, doctor, ${fact.valueEn.toLowerCase()} I'm still really worried about it.`;
+      } else if (personality === 'quiet') {
+        return `As I said, ${fact.valueEn.toLowerCase()}`;
+      } else {
+        return `As I mentioned earlier, ${fact.valueEn.toLowerCase()}`;
+      }
+    } else {
+      return `Yes, doctor, it's still ${fact.valueEn.toLowerCase()} — hasn't really changed since we talked.`;
+    }
+  }
+
+  /**
+   * Generates a clarification request when question is ambiguous.
+   */
+  public static handleAmbiguousQuestion(
+    studentMessage: string,
+    currentTopic: string,
+    language: LanguageMode
+  ): string {
+    const isBn = language === 'bn';
+    const isBanglish = language === 'banglish';
+
+    if (isBn) {
+      return 'ডাক্তার সাহেব, আপনি ঠিক কী জানতে চাচ্ছেন? কষ্টটা কেমন লাগছে, নাকি এটা কখন থেকে শুরু হয়েছে?';
+    } else if (isBanglish) {
+      return 'Doctor, apni thik ki jante chacchen? Kosto ta kemon, naki kobe shuru hoyeche?';
+    }
+
+    return "Do you mean how the pain feels, or where it's located, doctor?";
+  }
+
+  /**
+   * Generates safe patient response when student asks if patient has a specific diagnosis.
+   */
+  public static handleDirectDiagnosisQuery(
+    studentMessage: string,
+    language: LanguageMode,
+    personality: PatientPersonality
+  ): string {
+    const isBn = language === 'bn';
+    const isBanglish = language === 'banglish';
+
+    if (isBn) {
+      if (personality === 'anxious') {
+        return 'আমি তো ডাক্তার নই ডাক্তার সাহেব, রোগটা কি মারাত্মক কিছু? এই আশঙ্কায় তো খুব ভয় পাচ্ছি!';
+      }
+      return 'আমি তো জানি না ডাক্তার সাহেব, রোগটা কী তা বোঝার জন্যই তো আপনার কাছে সাহায্য নিতে এসেছি।';
+    } else if (isBanglish) {
+      return 'Ami to doctor na, thik jani na doctor shaheb. Apnar kachei to jante eshechi.';
+    }
+
+    if (personality === 'anxious') {
+      return "I honestly don't know, doctor. That's what scares me most! Is it something very serious?";
+    }
+    return "I don't know, doctor. That's why I came in to see you today. I just know that I'm feeling this discomfort.";
+  }
+
+  /**
+   * Applies personality tone and phrasing to a factual statement.
+   */
+  public static applyPersonality(
+    baseText: string,
+    personality: PatientPersonality,
+    language: LanguageMode,
+    intent: ClinicalIntent
+  ): string {
+    const isBn = language === 'bn';
+
+    if (isBn) {
+      switch (personality) {
+        case 'anxious':
+          return `ডাক্তার সাহেব... ${baseText} এটা কি কোনো বড় বিপদের লক্ষণ ডাক্তার সাহেব?`;
+        case 'quiet':
+          return baseText;
+        case 'talkative':
+          return `জি ডাক্তার সাহেব, বলতে গেলে ${baseText}। আসলে কদিন ধরে এটা নিয়েই বারবার ভাবছিলাম।`;
+        case 'frustrated':
+          return `অনেকক্ষণ ধরে বসে আছি ডাক্তার সাহেব... ${baseText} দয়া করে একটু দেখুন কী করা যায়।`;
+        case 'concerned':
+          return `${baseText}। আমি শুধু চিন্তা করছি কবে আবার স্বাভাবিক কাজে ফিরতে পারব।`;
+        default:
+          return `জি ডাক্তার সাহেব, ${baseText}`;
+      }
+    }
+
+    // English
+    switch (personality) {
+      case 'anxious':
+        return `${baseText} I'm really anxious about what this might mean, doctor.`;
+      case 'quiet':
+        return baseText;
+      case 'talkative':
+        return `Well doctor, to be honest with you, ${baseText} It's been on my mind constantly since it happened.`;
+      case 'frustrated':
+        return `${baseText} I really just want to get to the bottom of this discomfort.`;
+      case 'concerned':
+        return `${baseText} I just want to make sure I can get back to taking care of my family.`;
+      default:
+        return baseText;
+    }
+  }
+}

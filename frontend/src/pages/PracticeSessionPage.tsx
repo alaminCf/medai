@@ -28,11 +28,11 @@ import {
   Keyboard,
   Globe,
   Radio,
-  Maximize2,
-  Minimize2,
   ChevronDown,
   ChevronUp,
   Sparkles,
+  WifiOff,
+  Bug,
 } from 'lucide-react';
 import { getApiError } from '../services/api';
 import { formatDistanceToNow } from 'date-fns';
@@ -49,6 +49,16 @@ export default function PracticeSessionPage() {
   const [isEnding, setIsEnding] = useState(false);
   const [error, setError] = useState('');
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+
+  // Network Connectivity Tracking (Part 27)
+  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
+
+  // Mobile View Modes (Part 20 & 21: Split, Avatar Focus, Chat Focus)
+  const [mobileView, setMobileView] = useState<'split' | 'avatar' | 'chat'>('split');
+
+  // Developer Debug Mode (Part 31)
+  const [lastDebugInfo, setLastDebugInfo] = useState<any>(null);
+  const [showDebugModal, setShowDebugModal] = useState(false);
 
   // Phase 2 & 3: Consultation Mode, Voice, and Avatar State
   const [mode, setMode] = useState<ConsultationMode>('voice');
@@ -124,6 +134,18 @@ export default function PracticeSessionPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const timerRef = useRef<any>(null);
 
+  // Online / Offline Network Monitor (Part 27)
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Initialize consultation session
   useEffect(() => {
     if (!sessionId) return;
@@ -183,22 +205,22 @@ export default function PracticeSessionPage() {
     };
   }, [session]);
 
-  // Auto-scroll transcript
+  // Auto-scroll chat to latest message (Part 23)
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, interimTranscript, isSending]);
+  }, [messages, interimTranscript]);
 
-  // Voice & Avatar synchronization helper
+  // Synchronized Voice Playback with AI Avatar Lip-Sync
   const playPatientVoice = useCallback(
-    (text: string, language: ConsultationLanguage, sessObj?: PracticeSession | null) => {
-      const activeSession = sessObj || session;
-      const pc = activeSession?.patientCase;
+    async (text: string, language?: string, activeSession?: PracticeSession | null) => {
+      const currentSess = activeSession || session;
+      const pc = currentSess?.patientCase;
 
       setActiveSpeakingText(text);
 
-      textToSpeechService.play(text, {
+      await textToSpeechService.play(text, {
         sessionId: activeSession?.id,
-        language: language || activeSession?.language || 'en',
+        language: (language || activeSession?.language || 'en') as ConsultationLanguage,
         voiceId: pc?.voiceId,
         voiceGender: pc?.voiceGender,
         speed: pc?.speakingSpeed || 1.0,
@@ -345,6 +367,11 @@ export default function PracticeSessionPage() {
         setEmotionIntensity(response.intensity || 0.35);
       }
 
+      // Store debug info (Part 31)
+      if (response._debug) {
+        setLastDebugInfo(response._debug);
+      }
+
       // Play patient voice with synchronized avatar lip-sync
       const patientText = response.patientMessage.message;
       playPatientVoice(patientText, session.language || 'en');
@@ -382,6 +409,11 @@ export default function PracticeSessionPage() {
       if (response.emotion) {
         setCurrentEmotion(response.emotion);
         setEmotionIntensity(response.intensity || 0.35);
+      }
+
+      // Store debug info (Part 31)
+      if (response._debug) {
+        setLastDebugInfo(response._debug);
       }
 
       if (mode === 'voice' && !isMuted) {
@@ -425,11 +457,11 @@ export default function PracticeSessionPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
+      <div className="flex items-center justify-center h-[100dvh] h-screen bg-slate-950 text-white">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-3 border-teal-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm font-semibold text-slate-200">Entering Virtual Clinical Consultation Room...</p>
-          <p className="text-xs text-slate-400">Loading AI digital patient & clinical telemetry</p>
+          <p className="text-xs text-slate-400">Loading AI digital patient & clinical state engine</p>
         </div>
       </div>
     );
@@ -437,8 +469,8 @@ export default function PracticeSessionPage() {
 
   if (!session) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500">Session not found.</p>
+      <div className="p-6 text-center bg-slate-950 min-h-screen text-slate-200">
+        <p className="text-gray-400">Session not found.</p>
         <button onClick={() => navigate('/cases')} className="btn-primary mt-4">
           Browse Cases
         </button>
@@ -449,19 +481,30 @@ export default function PracticeSessionPage() {
   const pc = session.patientCase;
   const isActive = session.status === 'active';
   const isBangla = session.language === 'bn';
-  const questionCount = messages.filter((m) => m.sender === 'student').length;
+  const lastPatientMsg = [...messages].reverse().find((m) => m.sender === 'patient');
 
   return (
-    <div className={`flex flex-col h-[100dvh] h-screen bg-slate-950 text-slate-100 overflow-hidden w-full ${focusMode ? 'fixed inset-0 z-50' : ''}`}>
+    <div className={`flex flex-col h-[100dvh] bg-slate-950 text-slate-100 overflow-hidden w-full ${focusMode ? 'fixed inset-0 z-50' : ''}`}>
       {/* ──────────────────────────────────────────────────────────── */}
-      {/* Consultation Header                                         */}
+      {/* Network Lost Reconnection Banner (Part 27)                  */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-5 py-2 sm:py-3 flex flex-col md:flex-row md:items-center justify-between shadow-md z-20 flex-shrink-0 gap-2">
+      {!isOnline && (
+        <div className="bg-amber-600 text-white px-4 py-2 text-xs font-semibold flex items-center justify-center gap-2 z-50 animate-pulse">
+          <WifiOff className="w-4 h-4" />
+          <span>Connection lost. Reconnecting... (Consultation state and history are safely preserved)</span>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* Consultation Header (Mobile-First)                          */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-5 py-2 sm:py-3 flex flex-col md:flex-row md:items-center justify-between shadow-md z-30 flex-shrink-0 gap-2">
         <div className="flex items-center justify-between w-full md:w-auto">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setShowEndConfirm(true)}
               className="text-xs font-semibold px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors flex-shrink-0"
+              title="Exit consultation"
             >
               ← Exit
             </button>
@@ -474,13 +517,22 @@ export default function PracticeSessionPage() {
                 </span>
               </h1>
               <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
-                {pc.patientAge}y · {pc.patientGender} · {pc.category}
+                {pc.patientAge}y · {pc.patientGender} · {pc.personality}
               </p>
             </div>
           </div>
 
-          {/* Mobile Right: Timer & Quick End */}
+          {/* Mobile Right: Timer, Debug & End */}
           <div className="flex items-center gap-1.5 md:hidden flex-shrink-0">
+            {lastDebugInfo && (
+              <button
+                onClick={() => setShowDebugModal(true)}
+                className="p-1 rounded bg-slate-800 text-teal-400 border border-slate-700"
+                title="View Clinical State Debug Info"
+              >
+                <Bug className="w-3.5 h-3.5" />
+              </button>
+            )}
             <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-md text-[11px] font-mono font-semibold text-teal-400 border border-teal-500/30">
               <Clock className="w-3 h-3" />
               <span>{formatDuration(elapsed)}</span>
@@ -496,8 +548,36 @@ export default function PracticeSessionPage() {
           </div>
         </div>
 
-        {/* Right Tools Toolbar */}
+        {/* Tools Toolbar & Mobile View Switcher */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto pb-0.5 md:pb-0 w-full md:w-auto justify-between md:justify-end">
+          {/* Mobile View Switcher (Split, Avatar, Chat) */}
+          <div className="flex md:hidden items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+            <button
+              onClick={() => setMobileView('split')}
+              className={`px-2 py-1 rounded-md font-semibold transition-all ${
+                mobileView === 'split' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Split
+            </button>
+            <button
+              onClick={() => setMobileView('avatar')}
+              className={`px-2 py-1 rounded-md font-semibold transition-all ${
+                mobileView === 'avatar' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Avatar
+            </button>
+            <button
+              onClick={() => setMobileView('chat')}
+              className={`px-2 py-1 rounded-md font-semibold transition-all ${
+                mobileView === 'chat' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Chat
+            </button>
+          </div>
+
           {/* Language Indicator */}
           <div className="flex items-center gap-1 text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium border border-slate-700 flex-shrink-0">
             <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400" />
@@ -527,36 +607,33 @@ export default function PracticeSessionPage() {
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
-            aria-label={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-400" />}
           </button>
 
-          {/* Mobile Transcript Drawer Toggle Button */}
+          {/* Developer Debug Toggle (Desktop) */}
+          {lastDebugInfo && (
+            <button
+              onClick={() => setShowDebugModal(true)}
+              className="hidden md:flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-teal-300"
+              title="Inspect Clinical Engine State"
+            >
+              <Bug className="w-3.5 h-3.5 text-teal-400" />
+              <span>Debug</span>
+            </button>
+          )}
+
+          {/* Desktop Transcript Panel Toggle */}
           <button
             onClick={() => setShowTranscript(!showTranscript)}
-            className={`flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex-shrink-0 ${
+            className={`hidden md:flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all flex-shrink-0 ${
               showTranscript
                 ? 'bg-teal-600 text-white border-teal-500'
                 : 'bg-slate-800 text-teal-300 border-slate-700 hover:bg-slate-700'
             }`}
-            title="Toggle Transcript"
           >
-            <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400" />
+            <MessageSquare className="w-3.5 h-3.5" />
             <span>Chat ({messages.filter(m => m.sender !== 'system').length})</span>
-          </button>
-
-          {/* Focus Mode (Fullscreen Toggle) */}
-          <button
-            onClick={() => setFocusMode(!focusMode)}
-            className={`hidden sm:flex p-1.5 sm:p-2 rounded-lg border text-xs transition-colors flex-shrink-0 ${
-              focusMode
-                ? 'bg-teal-600 text-white border-teal-500'
-                : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-            }`}
-            title={focusMode ? 'Exit Focus Mode' : 'Focus Mode (Maximize Avatar)'}
-          >
-            {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
           {/* Desktop Consultation Timer */}
@@ -583,8 +660,18 @@ export default function PracticeSessionPage() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left / Center: Avatar Stage + Controls */}
         <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-950">
-          {/* Central Realistic 3D Avatar Area */}
-          <div className="flex-1 p-2 sm:p-4 min-h-[180px] sm:min-h-[260px] flex items-center justify-center relative overflow-hidden">
+          
+          {/* Avatar Canvas Container */}
+          {/* On mobile: displayed if mobileView is 'split' or 'avatar' */}
+          <div
+            className={`flex-shrink-0 transition-all duration-300 relative overflow-hidden flex items-center justify-center ${
+              mobileView === 'chat'
+                ? 'hidden md:flex md:flex-1 md:min-h-[240px]'
+                : mobileView === 'avatar'
+                ? 'flex-1 min-h-[280px]'
+                : 'h-[36vh] sm:h-[40vh] md:flex-1 md:h-auto min-h-[170px]'
+            }`}
+          >
             <PatientAvatarCanvas
               patientCase={pc as any}
               avatarState={avatarState}
@@ -596,13 +683,73 @@ export default function PracticeSessionPage() {
               onToggleFocusMode={() => setFocusMode(!focusMode)}
               onError={(msg) => setVoiceFallbackNotice(`Avatar notice: ${msg}. Voice consultation continuing.`)}
             />
+
+            {/* Mobile Avatar Overlay Speech Bubble (shown in 'avatar' mode) */}
+            {mobileView === 'avatar' && lastPatientMsg && (
+              <div className="absolute bottom-4 inset-x-4 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-xl max-h-28 overflow-y-auto text-xs text-slate-100">
+                <div className="text-[10px] font-bold text-teal-400 mb-0.5">Patient:</div>
+                <div>{lastPatientMsg.message}</div>
+              </div>
+            )}
           </div>
+
+          {/* Mobile Split View: Conversation Chat Container */}
+          {/* On mobile in 'split' or 'chat' view, render chat directly inside the main column! */}
+          <div
+            className={`flex-1 overflow-y-auto px-3 py-2 space-y-2.5 bg-slate-900/40 border-t border-slate-800/80 ${
+              mobileView === 'avatar' ? 'hidden md:hidden' : 'block md:hidden'
+            }`}
+          >
+            {messages.length === 0 ? (
+              <div className="text-center py-6 text-slate-500 text-xs">
+                No dialogue yet. Tap the microphone below or ask your first clinical question.
+              </div>
+            ) : (
+              messages
+                .filter((m) => m.sender !== 'system')
+                .map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex flex-col ${msg.sender === 'student' ? 'items-end' : 'items-start'}`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-0.5 text-[10px] text-slate-400">
+                      <span className="font-semibold text-slate-300">
+                        {msg.sender === 'student' ? 'You' : pc.patientName}
+                      </span>
+                      <span>·</span>
+                      <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
+                    </div>
+                    <div
+                      className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed max-w-[88%] shadow-sm ${
+                        msg.sender === 'student'
+                          ? 'bg-teal-600 text-white rounded-tr-xs'
+                          : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-tl-xs'
+                      }`}
+                    >
+                      {msg.message}
+                    </div>
+                  </div>
+                ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Real-time Interim Transcription Preview */}
+          {interimTranscript && (
+            <div className="mx-3 my-1 p-2 rounded-xl bg-emerald-950/80 border border-emerald-700/80 text-emerald-200 text-xs flex items-center gap-2 shadow-lg animate-pulse flex-shrink-0">
+              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+              <div className="flex-1 truncate">
+                <span className="font-bold text-emerald-400">Hearing speech: </span>
+                <span className="italic">"{interimTranscript}"</span>
+              </div>
+            </div>
+          )}
 
           {/* Error / Fallback Banners */}
           {error && (
-            <div className="mx-4 mb-2 bg-red-950/80 border border-red-800 text-red-200 rounded-lg px-4 py-2 flex items-center justify-between text-xs">
+            <div className="mx-3 my-1 bg-red-950/80 border border-red-800 text-red-200 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs flex-shrink-0">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
                 <span>{error}</span>
               </div>
               <button onClick={() => setError('')} className="text-red-400 hover:text-red-200">
@@ -610,11 +757,10 @@ export default function PracticeSessionPage() {
               </button>
             </div>
           )}
-
           {voiceFallbackNotice && (
-            <div className="mx-4 mb-2 bg-amber-950/80 border border-amber-800 text-amber-200 rounded-lg px-4 py-2 flex items-center justify-between text-xs">
+            <div className="mx-3 my-1 bg-amber-950/80 border border-amber-800 text-amber-200 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs flex-shrink-0">
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
                 <span>{voiceFallbackNotice}</span>
               </div>
               <button onClick={() => setVoiceFallbackNotice('')} className="text-amber-400 hover:text-amber-200">
@@ -623,33 +769,22 @@ export default function PracticeSessionPage() {
             </div>
           )}
 
-          {/* Real-time Interim Transcription Preview ("Hearing you speak...") */}
-          {interimTranscript && (
-            <div className="mx-4 mb-2 p-2.5 rounded-xl bg-emerald-950/80 border border-emerald-700/80 text-emerald-200 text-xs flex items-center gap-2 shadow-lg animate-pulse">
-              <Radio className="w-4 h-4 text-emerald-400 animate-spin" />
-              <div className="flex-1">
-                <span className="font-bold text-emerald-400">Hearing speech: </span>
-                <span className="italic">"{interimTranscript}"</span>
-              </div>
-            </div>
-          )}
-
           {/* Clinical Guidance: Quick Suggested SOCRATES Questions */}
           {isActive && (
-            <div className="bg-slate-900/95 border-t border-slate-800/80 px-4 py-2.5 z-20">
+            <div className="bg-slate-900/90 border-t border-slate-800 px-3 py-2 z-20 flex-shrink-0">
               <div className="max-w-2xl mx-auto">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 text-xs font-semibold text-teal-400">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>{isBangla ? 'সহায়ক ক্লিনিক্যাল প্রশ্ন (1-Click Ask)' : 'Suggested Clinical Inquiries'}</span>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-teal-400">
+                      <Sparkles className="w-3 h-3" />
+                      <span>{isBangla ? 'ক্লিনিক্যাল প্রশ্ন' : 'Suggested Inquiries'}</span>
                     </span>
-                    <div className="flex items-center gap-1 bg-slate-800 p-0.5 rounded-lg text-[10px]">
+                    <div className="flex items-center gap-0.5 bg-slate-800 p-0.5 rounded-md text-[9px]">
                       <button
                         type="button"
                         onClick={() => setSuggestionCategory('socrates')}
-                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
-                          suggestionCategory === 'socrates' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        className={`px-1.5 py-0.5 rounded font-medium transition-colors ${
+                          suggestionCategory === 'socrates' ? 'bg-teal-600 text-white' : 'text-slate-400'
                         }`}
                       >
                         SOCRATES
@@ -657,45 +792,35 @@ export default function PracticeSessionPage() {
                       <button
                         type="button"
                         onClick={() => setSuggestionCategory('history')}
-                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
-                          suggestionCategory === 'history' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                        className={`px-1.5 py-0.5 rounded font-medium transition-colors ${
+                          suggestionCategory === 'history' ? 'bg-teal-600 text-white' : 'text-slate-400'
                         }`}
                       >
-                        {isBangla ? 'পূর্ব ইতিহাস' : 'Past History'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSuggestionCategory('systems')}
-                        className={`px-2 py-0.5 rounded-md font-medium transition-colors ${
-                          suggestionCategory === 'systems' ? 'bg-teal-600 text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {isBangla ? 'উপসর্গ পর্যালোচনা' : 'System Review'}
+                        History
                       </button>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowSuggestions(!showSuggestions)}
-                    className="text-[11px] text-slate-500 hover:text-slate-300 font-medium flex items-center gap-1"
+                    className="text-[10px] text-slate-500 hover:text-slate-300 font-medium flex items-center gap-0.5"
                   >
-                    <span>{showSuggestions ? (isBangla ? 'লুকান' : 'Hide') : (isBangla ? 'দেখান' : 'Show')}</span>
-                    {showSuggestions ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+                    <span>{showSuggestions ? 'Hide' : 'Show'}</span>
+                    {showSuggestions ? <ChevronDown className="w-2.5 h-2.5" /> : <ChevronUp className="w-2.5 h-2.5" />}
                   </button>
                 </div>
 
                 {showSuggestions && (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-xs">
                     {(isBangla ? SUGGESTED_QUESTIONS.bn : SUGGESTED_QUESTIONS.en)[suggestionCategory].map((q, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => handleQuickAsk(q)}
                         disabled={isSending || voiceState === 'listening' || voiceState === 'thinking'}
-                        className="flex-shrink-0 bg-slate-800/90 hover:bg-teal-900/40 border border-slate-700/70 hover:border-teal-500/50 text-slate-300 hover:text-teal-200 px-3 py-1.5 rounded-full transition-all text-[11px] flex items-center gap-1.5 disabled:opacity-40"
-                        title={mode === 'text' ? 'Insert into input' : 'Ask AI patient directly'}
+                        className="flex-shrink-0 bg-slate-800 hover:bg-teal-900/40 border border-slate-700 text-slate-300 hover:text-teal-200 px-2.5 py-1 rounded-full transition-all text-[11px] disabled:opacity-40"
                       >
-                        <span>{q}</span>
+                        {q}
                       </button>
                     ))}
                   </div>
@@ -704,62 +829,65 @@ export default function PracticeSessionPage() {
             </div>
           )}
 
-          {/* Bottom Interaction Control Bar */}
-          <div className="bg-slate-900 border-t border-slate-800 p-2.5 sm:p-4 z-20 flex-shrink-0" style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}>
+          {/* Bottom Interaction Control Bar (Mobile-First Touch Target) */}
+          <div
+            className="bg-slate-900 border-t border-slate-800 p-2.5 sm:p-4 z-20 flex-shrink-0"
+            style={{ paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
+          >
             <div className="max-w-2xl mx-auto">
               {mode === 'voice' ? (
                 /* VOICE MODE CONTROLS */
-                <div className="flex flex-col items-center gap-3">
-                  <div className="flex items-center justify-center gap-4 w-full">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex items-center justify-center gap-3 sm:gap-4 w-full">
                     {/* Switch to Text Fallback */}
                     <button
                       type="button"
                       onClick={() => setMode('text')}
-                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800"
+                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
                       title="Switch to Keyboard / Text Mode"
                     >
                       <Keyboard className="w-5 h-5" />
                     </button>
 
-                    {/* Central Microphone Button with Animated States */}
+                    {/* Central High-Affordance Microphone Button (56px minimum height) */}
                     {voiceState === 'listening' ? (
                       <button
                         type="button"
                         onClick={stopListening}
-                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-xl shadow-emerald-600/30 transition-all transform hover:scale-105 animate-pulse"
+                        className="flex-1 max-w-xs flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-xl shadow-emerald-600/30 transition-all min-h-[52px] animate-pulse"
                       >
-                        <Radio className="w-6 h-6 text-white animate-spin" />
-                        <span className="text-base tracking-wide">Listening... (Tap to Send)</span>
+                        <Radio className="w-5 h-5 text-white animate-spin" />
+                        <span className="text-sm sm:text-base">Listening... (Tap to Send)</span>
                       </button>
                     ) : voiceState === 'thinking' ? (
                       <button
                         disabled
-                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-indigo-600 text-white font-bold opacity-80 cursor-not-allowed"
+                        className="flex-1 max-w-xs flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-indigo-600 text-white font-bold opacity-80 cursor-not-allowed min-h-[52px]"
                       >
-                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span className="text-base tracking-wide">AI Patient is thinking...</span>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span className="text-sm sm:text-base">Patient thinking...</span>
                       </button>
                     ) : voiceState === 'speaking' ? (
                       <button
                         type="button"
                         onClick={handleStopAudio}
-                        className="flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/30 transition-all transform hover:scale-105"
+                        className="flex-1 max-w-xs flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/30 transition-all min-h-[52px]"
                       >
-                        <Square className="w-5 h-5 fill-white" />
-                        <span className="text-base tracking-wide">AI Patient is speaking (Tap to Interrupt)</span>
+                        <Square className="w-4 h-4 fill-white" />
+                        <span className="text-sm sm:text-base">Patient speaking (Tap to Stop)</span>
                       </button>
                     ) : (
                       <button
                         type="button"
                         onClick={startListening}
                         disabled={isSending || !isActive}
-                        className="group flex items-center gap-3 px-8 py-4 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/20 transition-all transform hover:scale-105 disabled:opacity-50"
+                        className="flex-1 max-w-xs group flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-full bg-teal-600 hover:bg-teal-500 text-white font-bold shadow-xl shadow-teal-600/20 transition-all min-h-[52px] disabled:opacity-50"
                       >
-                        <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                          <Mic className="w-4 h-4 text-white" />
+                        <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                          <Mic className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-base tracking-wide">
-                          {isBangla ? 'কথা বলতে চাপুন (Tap to Speak)' : 'Tap to Speak'}
+                        <span className="text-sm sm:text-base">
+                          {isBangla ? 'কথা বলুন (Tap to Speak)' : 'Tap to Speak'}
                         </span>
                       </button>
                     )}
@@ -769,37 +897,20 @@ export default function PracticeSessionPage() {
                       type="button"
                       onClick={handleReplayAudio}
                       disabled={voiceState === 'listening' || isSending}
-                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800 disabled:opacity-30"
-                      title="Replay Last AI Patient Voice"
+                      className="p-3 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors border border-slate-800 disabled:opacity-30 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                      title="Replay Last Patient Voice"
                     >
                       <RotateCcw className="w-5 h-5 text-teal-400" />
-                    </button>
-                  </div>
-
-                  {/* Transcript toggle button */}
-                  <div className="flex items-center gap-4 text-xs text-slate-400">
-                    <span>
-                      {isBangla
-                        ? 'মাইক্রোফোনে স্বাভাবিক বাংলায় কথা বলুন। রোগী বাংলায় উত্তর দেবে।'
-                        : 'Speak naturally to your AI patient. Avatar lip-syncs with speech in real-time.'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowTranscript(!showTranscript)}
-                      className="text-teal-400 hover:text-teal-300 font-semibold flex items-center gap-1"
-                    >
-                      <span>{showTranscript ? 'Hide Transcript' : 'Show Transcript'}</span>
-                      {showTranscript ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
               ) : (
                 /* TEXT MODE FALLBACK */
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between pb-1 text-xs">
-                    <span className="font-semibold text-slate-400 flex items-center gap-1.5">
-                      <Keyboard className="w-3.5 h-3.5 text-slate-400" />
-                      <span>Text Consultation Mode</span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-slate-400 flex items-center gap-1">
+                      <Keyboard className="w-3 h-3 text-slate-400" />
+                      <span>Text Consultation</span>
                     </span>
                     <button
                       type="button"
@@ -807,7 +918,7 @@ export default function PracticeSessionPage() {
                       className="font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-1"
                     >
                       <Mic className="w-3 h-3" />
-                      <span>Switch to Voice Mode</span>
+                      <span>Switch to Voice</span>
                     </button>
                   </div>
 
@@ -820,16 +931,16 @@ export default function PracticeSessionPage() {
                       placeholder={
                         isBangla
                           ? 'রোগীকে বাংলায় প্রশ্ন করুন... (Enter চাপুন)'
-                          : 'Ask the AI patient a question... (Press Enter to send)'
+                          : 'Ask the patient a question...'
                       }
                       rows={1}
-                      className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 focus:border-teal-500 focus:outline-hidden resize-none min-h-[44px] max-h-32 text-sm"
+                      className="flex-1 bg-slate-950 border border-slate-800 text-white rounded-xl px-3.5 py-2.5 focus:border-teal-500 focus:outline-hidden resize-none min-h-[44px] max-h-28 text-sm"
                       disabled={isSending || !isActive}
                     />
                     <button
                       onClick={handleSendTextMessage}
                       disabled={!input.trim() || isSending || !isActive}
-                      className="w-11 h-11 bg-teal-600 hover:bg-teal-500 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-50"
+                      className="w-11 h-11 bg-teal-600 hover:bg-teal-500 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px]"
                       title="Send Question"
                     >
                       <Send className="w-4 h-4" />
@@ -841,25 +952,26 @@ export default function PracticeSessionPage() {
           </div>
         </main>
 
-        {/* Right Side Panel: Consultation Transcript & Clinical Notes */}
+        {/* Desktop Right Side Panel: Consultation Transcript & History */}
         {showTranscript && (
-          <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 md:relative md:inset-auto md:z-10 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 shadow-2xl md:shadow-none transition-all duration-300">
-            {/* Tab Header */}
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+          <aside className="hidden md:flex w-96 bg-slate-900 border-l border-slate-800 flex-col flex-shrink-0 shadow-2xl transition-all duration-300">
+            {/* Header */}
+            <div className="p-3.5 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-teal-400" />
-                <h3 className="font-bold text-sm text-slate-200">Consultation Transcript</h3>
+                <h3 className="font-bold text-xs text-slate-200">Consultation Dialogue ({messages.filter(m => m.sender !== 'system').length})</h3>
               </div>
               <button
                 onClick={() => setShowTranscript(false)}
                 className="text-slate-400 hover:text-white p-1 rounded-md"
+                title="Hide Panel"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Transcript Messages List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3.5 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-3.5 space-y-3 scrollbar-thin">
               {messages.length === 0 ? (
                 <div className="text-center py-10 text-slate-500 text-xs">
                   No dialogue recorded yet. Tap the microphone to begin.
@@ -872,20 +984,20 @@ export default function PracticeSessionPage() {
                       key={msg.id}
                       className={`flex flex-col ${msg.sender === 'student' ? 'items-end' : 'items-start'}`}
                     >
-                      <div className="flex items-center gap-1.5 mb-1 text-[11px] text-slate-400">
+                      <div className="flex items-center gap-1 mb-0.5 text-[10px] text-slate-400">
                         <span className="font-semibold text-slate-300">
-                          {msg.sender === 'student' ? 'You (Doctor)' : `AI Patient (${pc.patientName})`}
+                          {msg.sender === 'student' ? 'Doctor' : pc.patientName}
                         </span>
                         <span>·</span>
                         <span>{formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}</span>
                         {msg.emotion && (
-                          <span className="text-[10px] text-teal-400 bg-teal-950/60 border border-teal-800/60 px-1.5 py-0.2 rounded capitalize">
+                          <span className="text-[9px] text-teal-400 bg-teal-950/60 border border-teal-800/60 px-1 py-0.2 rounded capitalize">
                             {msg.emotion}
                           </span>
                         )}
                       </div>
                       <div
-                        className={`rounded-2xl px-4 py-2.5 text-xs leading-relaxed max-w-[90%] shadow-sm ${
+                        className={`rounded-2xl px-3.5 py-2 text-xs leading-relaxed max-w-[90%] shadow-sm ${
                           msg.sender === 'student'
                             ? 'bg-teal-600 text-white rounded-tr-xs'
                             : 'bg-slate-800 text-slate-200 border border-slate-700/80 rounded-tl-xs'
@@ -896,10 +1008,9 @@ export default function PracticeSessionPage() {
                       {msg.sender === 'patient' && (
                         <button
                           onClick={() => playPatientVoice(msg.message, session.language || 'en')}
-                          className="mt-1 text-[10px] font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-1"
+                          className="mt-0.5 text-[9px] font-semibold text-teal-400 hover:text-teal-300 flex items-center gap-0.5"
                         >
-                          <Volume2 className="w-3 h-3" />
-                          <span>Replay audio</span>
+                          <Volume2 className="w-3 h-3" /> Replay
                         </button>
                       )}
                     </div>
@@ -907,42 +1018,127 @@ export default function PracticeSessionPage() {
               )}
               <div ref={messagesEndRef} />
             </div>
-
-            {/* Clinical Focus Guidelines Drawer */}
-            <div className="p-3.5 bg-slate-950/80 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
-              <div className="flex items-center justify-between text-slate-300 font-bold mb-1">
-                <span>Clinical History Taking (SOCRATES)</span>
-                <span className="text-teal-400">{questionCount} questions</span>
-              </div>
-              <p>• Site, Onset, Character, Radiation, Associations, Timing, Exacerbating, Severity.</p>
-            </div>
           </aside>
         )}
       </div>
 
-      {/* End Consultation Confirmation Modal */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* Developer / Admin Debug Modal (Part 31)                      */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      {showDebugModal && lastDebugInfo && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-teal-500/40 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-xs">
+            <div className="p-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bug className="w-4 h-4 text-teal-400" />
+                <h3 className="font-bold text-white">AI Patient Clinical Engine Debug (Turn {lastDebugInfo.conversationTurn})</h3>
+              </div>
+              <button onClick={() => setShowDebugModal(false)} className="text-slate-400 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-3 text-slate-300">
+              <div>
+                <span className="font-bold text-teal-400 uppercase text-[10px] tracking-wider">Student Question</span>
+                <p className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 mt-1 font-mono text-white">
+                  "{lastDebugInfo.studentQuestion}"
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="font-bold text-teal-400 uppercase text-[10px] tracking-wider">Detected Intents</span>
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 mt-1 flex flex-wrap gap-1">
+                    {lastDebugInfo.detectedIntents?.map((it: string) => (
+                      <span key={it} className="bg-teal-900/50 text-teal-300 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                        {it}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-bold text-teal-400 uppercase text-[10px] tracking-wider">Language & Topic</span>
+                  <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 mt-1 text-[11px]">
+                    <div>Lang: <span className="font-bold text-white">{lastDebugInfo.detectedLanguage}</span></div>
+                    <div className="truncate">Topic: <span className="text-slate-200">{lastDebugInfo.currentTopic}</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <span className="font-bold text-teal-400 uppercase text-[10px] tracking-wider">Retrieved Clinical Facts</span>
+                <div className="space-y-1.5 mt-1">
+                  {lastDebugInfo.retrievedFacts?.length === 0 ? (
+                    <p className="text-slate-500 text-[11px] italic">No specific clinical facts retrieved (clarification or greeting)</p>
+                  ) : (
+                    lastDebugInfo.retrievedFacts?.map((rf: any, i: number) => (
+                      <div key={i} className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-[11px]">
+                        <div className="flex items-center justify-between text-teal-400 font-semibold mb-0.5">
+                          <span>{rf.intent}</span>
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-300">
+                            {rf.previouslyDisclosed ? 'Repeated (Count: ' + rf.disclosureCount + ')' : 'First Disclosure'}
+                          </span>
+                        </div>
+                        <p className="text-slate-300">{rf.value}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <span className="font-bold text-teal-400 uppercase text-[10px] tracking-wider">Consistency Validation</span>
+                <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 mt-1 flex items-center justify-between">
+                  <span className={lastDebugInfo.validationResult?.valid ? 'text-emerald-400 font-bold' : 'text-red-400 font-bold'}>
+                    {lastDebugInfo.validationResult?.valid ? '✓ Passed Safety & Consistency Checks' : '✗ Failed Validation'}
+                  </span>
+                  <span className="text-slate-400 text-[10px]">Persona: {lastDebugInfo.personalityApplied}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-slate-950 border-t border-slate-800 flex justify-end">
+              <button onClick={() => setShowDebugModal(false)} className="btn-secondary text-xs px-3 py-1.5">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* End Consultation Confirmation Modal                         */}
+      {/* ──────────────────────────────────────────────────────────── */}
       {showEndConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-slate-200">
-            <h3 className="font-bold text-white text-lg mb-2">End AI Patient Consultation?</h3>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-              This will conclude your consultation with AI Patient {pc.patientName}. You will be able to review the full transcript and consultation metrics in Session History.
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 max-w-sm w-full shadow-2xl text-center space-y-3">
+            <h3 className="font-bold text-base text-white">Complete Consultation?</h3>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Are you ready to conclude your history-taking session with {pc.patientName}? Your clinical history
+              rubric will be evaluated based on questions asked.
             </p>
-            <div className="flex gap-3">
+            <div className="pt-2 flex items-center justify-center gap-2.5">
               <button
-                type="button"
                 onClick={() => setShowEndConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                disabled={isEnding}
               >
-                Keep Practicing
+                Continue Consultation
               </button>
               <button
-                type="button"
                 onClick={handleEnd}
                 disabled={isEnding}
-                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-500 text-white transition-colors flex items-center gap-1.5 shadow-md shadow-red-600/30"
               >
-                {isEnding ? 'Ending...' : 'End Session'}
+                {isEnding ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Evaluating...</span>
+                  </>
+                ) : (
+                  'Conclude & Grade'
+                )}
               </button>
             </div>
           </div>

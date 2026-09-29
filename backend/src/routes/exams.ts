@@ -478,7 +478,7 @@ router.post("/attempts/:attemptId/stations/:stationId/message", authenticate, as
       chiefComplaint: visibleFacts.chiefComplaint,
       personality: visibleFacts.personality,
       language: visibleFacts.language,
-      symptomsDetails: visibleFacts.symptoms,
+      symptomDetails: visibleFacts.symptoms,
       medicalHistory: visibleFacts.medicalHistory || undefined,
       medicationHistory: visibleFacts.medicationHistory || undefined,
       allergyHistory: visibleFacts.allergyHistory || undefined,
@@ -489,7 +489,8 @@ router.post("/attempts/:attemptId/stations/:stationId/message", authenticate, as
     const aiResult = await aiEngine.generatePatientResponse(
       patientCaseContext,
       conversationHistory,
-      message.trim()
+      message.trim(),
+      stationAttempt.id
     );
 
     // 4. Save Patient Message

@@ -369,11 +369,12 @@ router.post(
         // hiddenDiagnosis and redFlags are NEVER passed to the AI context
       };
 
-      // Generate AI patient response with Emotion Analysis
+      // Generate AI patient response with Stateful Clinical Conversation Engine
       const aiResponse = await aiPatientEngine.generatePatientResponse(
         patientContext,
         conversationHistory,
-        message.trim()
+        message.trim(),
+        sessionId
       );
 
       // Save patient response with Phase 3 emotion metadata
@@ -419,6 +420,7 @@ router.post(
           avatarAgeGroup: caseCtx.avatarAgeGroup,
           avatarStyle: caseCtx.avatarStyle,
         },
+        _debug: req.user?.role === 'admin' || (req.query && req.query.debug === 'true') ? aiResponse.debug : undefined,
       });
     } catch (error) {
       console.error('Message error:', error);

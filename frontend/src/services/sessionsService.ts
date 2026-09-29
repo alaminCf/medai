@@ -38,6 +38,7 @@ export interface SendMessageResponse {
     speakingSpeed?: number;
   };
   avatarConfig?: AvatarConfig;
+  _debug?: any;
 }
 
 export const sessionsService = {
