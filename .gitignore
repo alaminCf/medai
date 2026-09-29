@@ -4,6 +4,7 @@ build/
 .env
 *.db
 !backend/prisma/dev.db
+!backend/dev.db
 *.db-journal
 *.log
 .DS_Store

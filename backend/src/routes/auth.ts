@@ -47,7 +47,7 @@ router.post(
         select: { id: true, name: true, email: true, role: true, createdAt: true },
       });
 
-      const secret = process.env.JWT_SECRET!;
+      const secret = process.env.JWT_SECRET || 'techboloy-med-secret-key-prod-2026';
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role, name: user.name },
         secret,
@@ -57,7 +57,7 @@ router.post(
       res.status(201).json({ user, token });
     } catch (error) {
       console.error('Register error:', error);
-      res.status(500).json({ error: 'Registration failed' });
+      res.status(500).json({ error: 'Registration failed', details: error instanceof Error ? error.message : String(error) });
     }
   }
 );
@@ -91,7 +91,7 @@ router.post(
         return;
       }
 
-      const secret = process.env.JWT_SECRET!;
+      const secret = process.env.JWT_SECRET || 'techboloy-med-secret-key-prod-2026';
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role, name: user.name },
         secret,
@@ -109,7 +109,7 @@ router.post(
       res.json({ user: userData, token });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Login failed' });
+      res.status(500).json({ error: 'Login failed', details: error instanceof Error ? error.message : String(error) });
     }
   }
 );
