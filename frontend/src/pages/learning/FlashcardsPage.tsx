@@ -166,7 +166,7 @@ export default function FlashcardsPage() {
                 className="text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-1 rounded-full flex items-center gap-1.5 transition border border-teal-200"
               >
                 <Lightbulb className="w-3.5 h-3.5" />
-                ফ্ল্যাশকার্ড গাইড
+                Flashcard Guide
               </button>
               <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full">
                 {activeDeck.title}
@@ -504,7 +504,7 @@ export default function FlashcardsPage() {
             <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-white/10">
               <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
                 <Lightbulb className="w-4 h-4" />
-                মেডিকেল ফ্ল্যাশকার্ড সহায়তা কেন্দ্র
+                Medical Flashcard Learning Center
               </span>
               <button
                 onClick={() => setShowStudyGuideModal(false)}

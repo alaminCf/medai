@@ -17,7 +17,7 @@ import {
 export const FlashcardGuide: React.FC<{ defaultOpen?: boolean }> = ({ defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [lang, setLang] = useState<'bn' | 'en'>(() => {
-    return (localStorage.getItem('medai_flashcard_lang') as 'bn' | 'en') || 'bn';
+    return (localStorage.getItem('medai_flashcard_lang') as 'bn' | 'en') || 'en';
   });
   const [activeTab, setActiveTab] = useState<'what' | 'how' | 'benefits' | 'demo'>('what');
 
@@ -122,21 +122,21 @@ export const FlashcardGuide: React.FC<{ defaultOpen?: boolean }> = ({ defaultOpe
           <div className="flex items-center bg-white/10 rounded-xl p-0.5 border border-white/10">
             <button
               type="button"
-              onClick={() => switchLanguage('bn')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
-                isBn ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              <span>🇧🇩 বাংলা</span>
-            </button>
-            <button
-              type="button"
               onClick={() => switchLanguage('en')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
                 !isBn ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
               }`}
             >
               <span>🇬🇧 English</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLanguage('bn')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                isBn ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-300 hover:text-white'
+              }`}
+            >
+              <span>🇧🇩 বাংলা</span>
             </button>
           </div>
 
