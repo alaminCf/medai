@@ -8,7 +8,10 @@ import {
   CheckCircle2,
   Filter,
   AlertCircle,
+  Lightbulb,
+  X,
 } from 'lucide-react';
+import FlashcardGuide from '../../components/learning/FlashcardGuide';
 import learningService from '../../services/learningService';
 import type { FlashcardDeck, MedicalSubject } from '../../types';
 
@@ -23,6 +26,7 @@ export default function FlashcardsPage() {
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewCount, setReviewCount] = useState(0);
+  const [showStudyGuideModal, setShowStudyGuideModal] = useState(false);
 
   // AI Generator Modal state
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -142,19 +146,32 @@ export default function FlashcardsPage() {
         </div>
       </div>
 
+      {/* Flashcard Educational Guide */}
+      {!activeDeck && <FlashcardGuide defaultOpen={true} />}
+
       {/* Active Study Session View */}
       {activeDeck ? (
         <div className="max-w-2xl mx-auto py-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
             <button
               onClick={() => setActiveDeck(null)}
               className="text-xs font-semibold text-gray-600 hover:text-navy-900 flex items-center gap-1"
             >
               <ArrowLeft className="w-4 h-4" /> Exit Study Session
             </button>
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full">
-              {activeDeck.title}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowStudyGuideModal(true)}
+                className="text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 px-3 py-1 rounded-full flex items-center gap-1.5 transition border border-teal-200"
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                ফ্ল্যাশকার্ড গাইড
+              </button>
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full">
+                {activeDeck.title}
+              </span>
+            </div>
           </div>
 
           {currentCardIndex < (activeDeck.cards?.length || 0) ? (
@@ -479,6 +496,30 @@ export default function FlashcardsPage() {
           </div>
         </div>
       )}
+    
+      {/* Study Guide Modal during Study Session */}
+      {showStudyGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="max-w-4xl w-full my-8 bg-slate-950 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-white/10">
+              <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                <Lightbulb className="w-4 h-4" />
+                মেডিকেল ফ্ল্যাশকার্ড সহায়তা কেন্দ্র
+              </span>
+              <button
+                onClick={() => setShowStudyGuideModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
+              <FlashcardGuide defaultOpen={true} />
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

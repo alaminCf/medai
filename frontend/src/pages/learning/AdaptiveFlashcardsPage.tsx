@@ -6,6 +6,8 @@ import {
   CheckCircle,
   AlertTriangle,
   ChevronLeft,
+  Lightbulb,
+  X,
   
   
   
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react';
 import learningService from '../../services/learningService';
 import { PrioritizedFlashcard, ReviewRating } from '../../types';
+import FlashcardGuide from '../../components/learning/FlashcardGuide';
 
 export const AdaptiveFlashcardsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ export const AdaptiveFlashcardsPage: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [submittingRating, setSubmittingRating] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
 
   // Session summary stats
   const [sessionCompleted, setSessionCompleted] = useState(false);
@@ -171,6 +175,10 @@ export const AdaptiveFlashcardsPage: React.FC = () => {
             Return to Today
           </button>
         </div>
+
+        <div className="pt-8 text-left">
+          <FlashcardGuide defaultOpen={true} />
+        </div>
       </div>
     );
   }
@@ -180,14 +188,24 @@ export const AdaptiveFlashcardsPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Header & Progress */}
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => navigate('/revision')}
-          className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Exit Session
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/revision')}
+            className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1 transition"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Exit Session
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowGuideModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 hover:bg-teal-100 text-teal-700 rounded-full text-xs font-bold border border-teal-200 transition"
+          >
+            <Lightbulb className="w-3.5 h-3.5" />
+            ফ্ল্যাশকার্ড গাইড
+          </button>
+        </div>
 
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Progress</span>
@@ -322,7 +340,30 @@ export const AdaptiveFlashcardsPage: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    
+      {/* Guide Modal */}
+      {showGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+          <div className="max-w-4xl w-full my-8 bg-slate-950 rounded-3xl overflow-hidden shadow-2xl relative">
+            <div className="p-4 bg-slate-900 flex items-center justify-between border-b border-white/10">
+              <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                <Lightbulb className="w-4 h-4" />
+                মেডিকেল ফ্ল্যাশকার্ড সহায়তা কেন্দ্র
+              </span>
+              <button
+                onClick={() => setShowGuideModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 sm:p-6 max-h-[80vh] overflow-y-auto">
+              <FlashcardGuide defaultOpen={true} />
+            </div>
+          </div>
+        </div>
+      )}
+</div>
   );
 };
 
