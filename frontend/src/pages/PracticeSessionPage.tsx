@@ -456,54 +456,72 @@ export default function PracticeSessionPage() {
       {/* ──────────────────────────────────────────────────────────── */}
       {/* Consultation Header                                         */}
       {/* ──────────────────────────────────────────────────────────── */}
-      <header className="bg-slate-900 border-b border-slate-800 px-5 py-3 flex items-center justify-between shadow-md z-20 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowEndConfirm(true)}
-            className="text-xs font-semibold px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors"
-          >
-            ← Exit
-          </button>
-          <div className="h-4 w-px bg-slate-700" />
-          <div>
-            <h1 className="font-bold text-sm tracking-wide flex items-center gap-2 text-white">
-              <span>{pc.patientName}</span>
-              <span className="text-xs px-2 py-0.5 rounded font-medium bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                {pc.title}
-              </span>
-            </h1>
-            <p className="text-[11px] text-slate-400">
-              {pc.patientAge}y · {pc.patientGender} · {pc.category}
-            </p>
+      <header className="bg-slate-900 border-b border-slate-800 px-3 sm:px-5 py-2 sm:py-3 flex flex-col md:flex-row md:items-center justify-between shadow-md z-20 flex-shrink-0 gap-2">
+        <div className="flex items-center justify-between w-full md:w-auto">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              onClick={() => setShowEndConfirm(true)}
+              className="text-xs font-semibold px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-200 transition-colors flex-shrink-0"
+            >
+              ← Exit
+            </button>
+            <div className="h-4 w-px bg-slate-700 hidden sm:block" />
+            <div className="min-w-0">
+              <h1 className="font-bold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 sm:gap-2 text-white truncate">
+                <span className="truncate">{pc.patientName}</span>
+                <span className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded font-medium bg-teal-500/20 text-teal-300 border border-teal-500/30 flex-shrink-0">
+                  {pc.title}
+                </span>
+              </h1>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                {pc.patientAge}y · {pc.patientGender} · {pc.category}
+              </p>
+            </div>
+          </div>
+
+          {/* Mobile Right: Timer & Quick End */}
+          <div className="flex items-center gap-1.5 md:hidden flex-shrink-0">
+            <div className="flex items-center gap-1 bg-slate-950 px-2 py-1 rounded-md text-[11px] font-mono font-semibold text-teal-400 border border-teal-500/30">
+              <Clock className="w-3 h-3" />
+              <span>{formatDuration(elapsed)}</span>
+            </div>
+            {isActive && (
+              <button
+                onClick={() => setShowEndConfirm(true)}
+                className="text-[11px] font-bold px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded-md transition-colors"
+              >
+                End
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Right tools: Language Badge, Mode Toggle, Focus Mode, Audio Mute, Timer, End */}
-        <div className="flex items-center gap-2.5">
+        {/* Right Tools Toolbar */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto pb-0.5 md:pb-0 w-full md:w-auto justify-between md:justify-end">
           {/* Language Indicator */}
-          <div className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium border border-slate-700">
-            <Globe className="w-3.5 h-3.5 text-teal-400" />
-            <span>{isBangla ? 'বাংলা (BN)' : 'English (EN)'}</span>
+          <div className="flex items-center gap-1 text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 font-medium border border-slate-700 flex-shrink-0">
+            <Globe className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400" />
+            <span>{isBangla ? 'বাংলা' : 'EN'}</span>
           </div>
 
           {/* Mode Switcher */}
           <button
             onClick={handleToggleMode}
-            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+            className={`flex items-center gap-1 text-[11px] sm:text-xs font-medium px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border transition-all flex-shrink-0 ${
               mode === 'voice'
                 ? 'bg-teal-600 text-white border-teal-500 shadow-sm'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
             }`}
             title="Toggle Voice / Text Mode"
           >
-            {mode === 'voice' ? <Mic className="w-3.5 h-3.5" /> : <Keyboard className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{mode === 'voice' ? 'Voice Mode' : 'Text Mode'}</span>
+            {mode === 'voice' ? <Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Keyboard className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
+            <span>{mode === 'voice' ? 'Voice' : 'Text'}</span>
           </button>
 
           {/* Audio Mute/Unmute */}
           <button
             onClick={handleToggleMute}
-            className={`p-2 rounded-lg border text-xs transition-colors ${
+            className={`p-1.5 sm:p-2 rounded-lg border text-xs transition-colors flex-shrink-0 ${
               isMuted
                 ? 'bg-red-500/20 text-red-300 border-red-500/30'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
@@ -511,13 +529,27 @@ export default function PracticeSessionPage() {
             title={isMuted ? 'Unmute Audio' : 'Mute Audio'}
             aria-label={isMuted ? 'Unmute Audio' : 'Mute Audio'}
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-teal-400" />}
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-400" />}
+          </button>
+
+          {/* Mobile Transcript Drawer Toggle Button */}
+          <button
+            onClick={() => setShowTranscript(!showTranscript)}
+            className={`flex items-center gap-1 text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg border transition-all flex-shrink-0 ${
+              showTranscript
+                ? 'bg-teal-600 text-white border-teal-500'
+                : 'bg-slate-800 text-teal-300 border-slate-700 hover:bg-slate-700'
+            }`}
+            title="Toggle Transcript"
+          >
+            <MessageSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-teal-400" />
+            <span>Chat ({messages.filter(m => m.sender !== 'system').length})</span>
           </button>
 
           {/* Focus Mode (Fullscreen Toggle) */}
           <button
             onClick={() => setFocusMode(!focusMode)}
-            className={`p-2 rounded-lg border text-xs transition-colors ${
+            className={`hidden sm:flex p-1.5 sm:p-2 rounded-lg border text-xs transition-colors flex-shrink-0 ${
               focusMode
                 ? 'bg-teal-600 text-white border-teal-500'
                 : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
@@ -527,17 +559,17 @@ export default function PracticeSessionPage() {
             {focusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
 
-          {/* Consultation Timer (Continuous) */}
-          <div className="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-teal-400 border border-teal-500/30">
+          {/* Desktop Consultation Timer */}
+          <div className="hidden md:flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-teal-400 border border-teal-500/30 flex-shrink-0">
             <Clock className="w-3.5 h-3.5" />
             <span>{formatDuration(elapsed)}</span>
           </div>
 
-          {/* End Consultation */}
+          {/* Desktop End Consultation */}
           {isActive && (
             <button
               onClick={() => setShowEndConfirm(true)}
-              className="text-xs font-bold px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-sm"
+              className="hidden md:block text-xs font-bold px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white rounded-lg transition-colors shadow-sm flex-shrink-0"
             >
               End Session
             </button>
@@ -811,7 +843,7 @@ export default function PracticeSessionPage() {
 
         {/* Right Side Panel: Consultation Transcript & Clinical Notes */}
         {showTranscript && (
-          <aside className="w-80 sm:w-96 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 z-10 transition-all duration-300">
+          <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 md:relative md:inset-auto md:z-10 bg-slate-900 border-l border-slate-800 flex flex-col flex-shrink-0 shadow-2xl md:shadow-none transition-all duration-300">
             {/* Tab Header */}
             <div className="p-4 border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2">

@@ -205,6 +205,7 @@ export default function AITutorPage() {
   const [activeSpecialtyIndex, setActiveSpecialtyIndex] = useState(0);
   // Phase 7.5 Hub State
   const [showModeHub, setShowModeHub] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'chat' | 'history'>('chat');
   const [hubSubject, setHubSubject] = useState('Physiology');
   const [hubTopic, setHubTopic] = useState('Cardiac Cycle');
 
@@ -259,6 +260,7 @@ export default function AITutorPage() {
   };
 
   const handleSelectConversation = async (convoId: string) => {
+    setMobileTab('chat');
     try {
       const full = await learningService.getTutorConversation(convoId);
       setActiveConversation(full);
@@ -271,6 +273,7 @@ export default function AITutorPage() {
   };
 
   const handleStartNewConversation = async (customInitialPrompt?: string) => {
+    setMobileTab('chat');
     try {
       const title = `Tutor: ${selectedMode} (${new Date().toLocaleDateString()})`;
       const initialPrompt =
@@ -624,7 +627,7 @@ export default function AITutorPage() {
   const currentSpecialty = SPECIALTY_TOPICS[activeSpecialtyIndex];
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 h-[calc(100vh-4rem)] flex flex-col">
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-2 sm:py-3 min-h-[calc(100vh-4.5rem)] lg:h-[calc(100vh-4.5rem)] flex flex-col">
       {/* Top Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-gray-200 flex-shrink-0">
         <div>
@@ -846,10 +849,40 @@ export default function AITutorPage() {
         </div>
       )}
 
+      {/* ────────────────────────────────────────────────────────
+          MOBILE VIEW SELECTOR (Visible on < lg)
+         ──────────────────────────────────────────────────────── */}
+      <div className="flex lg:hidden items-center justify-center p-1 bg-gray-100 rounded-xl mb-2 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            mobileTab === 'chat'
+              ? 'bg-navy-900 text-white shadow-2xs'
+              : 'text-gray-600 hover:text-navy-900'
+          }`}
+        >
+          <Brain className="w-3.5 h-3.5 text-teal-400" />
+          <span>Interactive Chat</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('history')}
+          className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            mobileTab === 'history'
+              ? 'bg-navy-900 text-white shadow-2xs'
+              : 'text-gray-600 hover:text-navy-900'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5 text-teal-400" />
+          <span>Topics & History ({conversations.length})</span>
+        </button>
+      </div>
+
       {/* Main Split Layout: Left Navigation / Right Interactive Chat */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 pt-3 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 pt-1 sm:pt-3 overflow-hidden">
         {/* Left Column (3 cols): Convo History, Material Grounding, Weak Concepts */}
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-gray-200 p-3.5 flex flex-col h-full shadow-2xs overflow-hidden">
+        <div className={`lg:col-span-3 bg-white rounded-2xl border border-gray-200 p-3.5 flex flex-col h-full shadow-2xs overflow-hidden ${mobileTab === 'chat' ? 'hidden lg:flex' : 'flex'}`}>
           <button
             onClick={() => handleStartNewConversation()}
             className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 mb-3"
@@ -940,7 +973,7 @@ export default function AITutorPage() {
         </div>
 
         {/* Right Column (9 cols): Interactive Chat Area */}
-        <div className="lg:col-span-9 bg-white rounded-2xl border border-gray-200 flex flex-col h-full shadow-2xs overflow-hidden">
+        <div className={`lg:col-span-9 bg-white rounded-2xl border border-gray-200 flex flex-col h-full shadow-2xs overflow-hidden ${mobileTab === 'history' ? 'hidden lg:flex' : 'flex'}`}>
           {/* Active Chat Top Bar */}
           <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-slate-50/70">
             <div className="flex items-center gap-2 flex-wrap">
@@ -955,7 +988,16 @@ export default function AITutorPage() {
               )}
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setMobileTab('history')}
+                className="lg:hidden text-xs text-navy-900 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded-lg font-bold flex items-center gap-1"
+                title="View Conversation History"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-teal-600" />
+                <span className="hidden sm:inline">History</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowExplorer(!showExplorer)}

@@ -20,7 +20,8 @@ import {
   Compass,
   AlertCircle,
   Network,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -55,19 +56,33 @@ const bottomItems = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+  isMobile?: boolean;
+}
+
+export default function Sidebar({ onClose, isMobile }: SidebarProps) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    onClose?.();
     await logout();
     navigate('/login');
   };
 
+  const handleNavClick = () => {
+    onClose?.();
+  };
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-full shadow-sm">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-gray-100 flex-shrink-0">
+    <aside
+      className={`bg-white border-r border-gray-100 flex flex-col h-full shadow-sm ${
+        isMobile ? 'w-full' : 'w-64'
+      }`}
+    >
+      {/* Logo Header */}
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-navy-900 rounded-lg flex items-center justify-center flex-shrink-0">
             <Stethoscope className="w-4 h-4 text-white" />
@@ -77,6 +92,18 @@ export default function Sidebar() {
             <p className="text-[10px] text-gray-400 font-medium">AI Patient & Academic Hub</p>
           </div>
         </div>
+
+        {/* Mobile close button */}
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation List (Scrollable) */}
@@ -97,10 +124,11 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
+                onClick={handleNavClick}
                 className={({ isActive }) =>
                   isActive
-                    ? 'sidebar-item-active bg-teal-50 text-teal-900 font-semibold'
-                    : 'sidebar-item hover:text-teal-900 hover:bg-teal-50/50'
+                    ? 'sidebar-item-active bg-teal-50 text-teal-900 font-semibold py-2.5'
+                    : 'sidebar-item hover:text-teal-900 hover:bg-teal-50/50 py-2.5'
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0 text-teal-600" />
@@ -125,8 +153,9 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
+                onClick={handleNavClick}
                 className={({ isActive }) =>
-                  isActive ? 'sidebar-item-active' : 'sidebar-item'
+                  isActive ? 'sidebar-item-active py-2.5' : 'sidebar-item py-2.5'
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -148,10 +177,9 @@ export default function Sidebar() {
               <NavLink
                 key={to}
                 to={to}
+                onClick={handleNavClick}
                 className={({ isActive }) =>
-                  isActive
-                    ? 'sidebar-item-active'
-                    : 'sidebar-item'
+                  isActive ? 'sidebar-item-active py-2.5' : 'sidebar-item py-2.5'
                 }
               >
                 <Icon className="w-4 h-4 flex-shrink-0" />
@@ -168,8 +196,9 @@ export default function Sidebar() {
             </p>
             <NavLink
               to="/admin"
+              onClick={handleNavClick}
               className={({ isActive }) =>
-                isActive ? 'sidebar-item-active' : 'sidebar-item'
+                isActive ? 'sidebar-item-active py-2.5' : 'sidebar-item py-2.5'
               }
             >
               <ShieldCheck className="w-4 h-4 flex-shrink-0" />
@@ -185,8 +214,9 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={handleNavClick}
             className={({ isActive }) =>
-              isActive ? 'sidebar-item-active' : 'sidebar-item'
+              isActive ? 'sidebar-item-active py-2' : 'sidebar-item py-2'
             }
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
@@ -202,7 +232,7 @@ export default function Sidebar() {
 
         <button
           onClick={handleLogout}
-          className="sidebar-item text-red-500 hover:bg-red-50 hover:text-red-600 w-full"
+          className="sidebar-item text-red-500 hover:bg-red-50 hover:text-red-600 w-full py-2"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           <span>Logout</span>

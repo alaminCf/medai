@@ -18,6 +18,7 @@ import {
   Award,
   Radio,
   Lightbulb,
+  User,
 } from 'lucide-react';
 import learningService from '../../services/learningService';
 import speechRecognitionService from '../../services/speechRecognitionService';
@@ -83,6 +84,7 @@ export default function AITeacherClassPage() {
 
   // Active Tab in Board
   const [activeBoardTab, setActiveBoardTab] = useState<'whiteboard' | 'pearls' | 'transcript'>('whiteboard');
+  const [mobileView, setMobileView] = useState<'avatar' | 'whiteboard'>('avatar');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -390,7 +392,7 @@ ${currentStep.spokenScript}
   const currentStep = lesson.steps[currentStepIndex];
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 h-[calc(100vh-4rem)] flex flex-col">
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 py-2 sm:py-3 min-h-[calc(100vh-4.5rem)] lg:h-[calc(100vh-4.5rem)] flex flex-col">
       {/* ────────────────────────────────────────────────────────
           TOP CLASSROOM BAR
          ──────────────────────────────────────────────────────── */}
@@ -454,11 +456,41 @@ ${currentStep.spokenScript}
       </div>
 
       {/* ────────────────────────────────────────────────────────
+          MOBILE VIEW SELECTOR (Visible on < lg)
+         ──────────────────────────────────────────────────────── */}
+      <div className="flex lg:hidden items-center justify-center p-1 bg-gray-100 rounded-xl my-2 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileView('avatar')}
+          className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            mobileView === 'avatar'
+              ? 'bg-navy-900 text-white shadow-2xs'
+              : 'text-gray-600 hover:text-navy-900'
+          }`}
+        >
+          <User className="w-3.5 h-3.5 text-teal-400" />
+          <span>3D Teacher Avatar</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileView('whiteboard')}
+          className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            mobileView === 'whiteboard'
+              ? 'bg-navy-900 text-white shadow-2xs'
+              : 'text-gray-600 hover:text-navy-900'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5 text-teal-400" />
+          <span>Whiteboard & Notes</span>
+        </button>
+      </div>
+
+      {/* ────────────────────────────────────────────────────────
           CENTER STAGE: 3D TEACHER AVATAR + DIGITAL WHITEBOARD
          ──────────────────────────────────────────────────────── */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 py-3 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 py-1 sm:py-3 overflow-hidden">
         {/* Left (7 cols): 3D Teacher Avatar Stage */}
-        <div className="lg:col-span-7 flex flex-col h-full overflow-hidden relative">
+        <div className={`lg:col-span-7 flex flex-col h-full overflow-hidden relative ${mobileView === 'whiteboard' ? 'hidden lg:flex' : 'flex'}`}>
           <div className="flex-1 w-full h-full rounded-2xl overflow-hidden relative shadow-md border border-slate-800">
             <TeacherAvatarCanvas
               avatarState={avatarState}
@@ -496,7 +528,21 @@ ${currentStep.spokenScript}
         </div>
 
         {/* Right (5 cols): Interactive Classroom Whiteboard & Slide Panel */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-2xs flex flex-col h-full overflow-hidden">
+        <div className={`lg:col-span-5 bg-white rounded-2xl border border-gray-200 shadow-2xs flex flex-col h-full overflow-hidden ${mobileView === 'avatar' ? 'hidden lg:flex' : 'flex'}`}>
+          {/* Mobile Back to Avatar bar */}
+          <div className="lg:hidden px-4 py-2 bg-navy-900 text-white flex items-center justify-between text-xs">
+            <span className="font-bold flex items-center gap-1.5">
+              <BookOpen className="w-3.5 h-3.5 text-teal-400" />
+              Whiteboard & Lesson Notes
+            </span>
+            <button
+              type="button"
+              onClick={() => setMobileView('avatar')}
+              className="px-2.5 py-1 bg-teal-500 text-slate-950 rounded-lg font-bold text-[11px]"
+            >
+              ← 3D Teacher
+            </button>
+          </div>
           {/* Whiteboard Tab Switcher */}
           <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-slate-50">
             <div className="flex items-center gap-1.5">

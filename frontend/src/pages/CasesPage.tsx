@@ -93,7 +93,7 @@ export default function CasesPage() {
   });
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-3.5 sm:p-6 max-w-6xl mx-auto space-y-4 sm:space-y-6">
       {/* Top Banner with Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-navy-950 via-navy-900 to-teal-950 text-white p-6 sm:p-7 rounded-2xl shadow-md border border-navy-800">
         <div>
