@@ -198,10 +198,22 @@ export default function DashboardPage() {
                 <div className="mt-4 pt-2.5 border-t border-white/10 flex items-center justify-between">
                   <span className="text-[10px] text-gray-400">AI Patient: {item.patient}</span>
                   <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLaunchTopic(item.title, item.category);
+                    }}
                     disabled={isConnecting}
-                    className="text-xs font-black text-teal-300 hover:text-white flex items-center gap-1"
+                    className="text-xs font-black text-teal-300 hover:text-white flex items-center gap-1 active:scale-95"
                   >
-                    {isConnecting ? 'Connecting...' : 'Start →'}
+                    {isConnecting ? (
+                      <>
+                        <div className="w-3 h-3 border-2 border-teal-300 border-t-transparent rounded-full animate-spin" />
+                        <span>Connecting...</span>
+                      </>
+                    ) : (
+                      <span>Start →</span>
+                    )}
                   </button>
                 </div>
               </div>

@@ -10,6 +10,15 @@ export default function AppLayout() {
   const location = useLocation();
   const { user } = useAuth();
 
+  // Immersive full-screen clinical simulation & classroom routes:
+  // Virtual Patient Consultation (/session/:sessionId), OSCE Station (/exams/.../station/...), and AI Teacher Classroom (/ai-tutor/class)
+  // These routes have their own full-screen UI with specialized headers and controls,
+  // and MUST NOT be covered or restricted by the global mobile nav or desktop sidebar.
+  const isImmersiveRoute =
+    location.pathname.startsWith('/session/') ||
+    (location.pathname.startsWith('/exams/') && location.pathname.includes('/station/')) ||
+    location.pathname.startsWith('/ai-tutor/class');
+
   // Auto-close mobile drawer when route changes
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -26,6 +35,15 @@ export default function AppLayout() {
       document.body.style.overflow = '';
     };
   }, [isMobileMenuOpen]);
+
+  // For immersive full-screen clinical simulation routes: render unconstrained full viewport
+  if (isImmersiveRoute) {
+    return (
+      <div className="h-[100dvh] h-screen w-full bg-slate-950 overflow-hidden flex flex-col">
+        <Outlet />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden">

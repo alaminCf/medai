@@ -62,8 +62,8 @@ export class WebGLAvatarProvider implements IAvatarProvider {
     this.gender = (options.avatarGender?.toLowerCase().includes('female') ? 'female' : 'male') as any;
     this.ageGroup = (options.avatarAgeGroup || 'middle-aged') as any;
 
-    const width = container.clientWidth || 640;
-    const height = container.clientHeight || 480;
+    const width = container.clientWidth > 0 ? container.clientWidth : (typeof window !== 'undefined' ? window.innerWidth : 640);
+    const height = container.clientHeight > 0 ? container.clientHeight : 480;
 
     // Scene
     this.scene = new THREE.Scene();
@@ -74,14 +74,19 @@ export class WebGLAvatarProvider implements IAvatarProvider {
     this.camera.position.set(0, 0.2, 2.6);
 
     // Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    try {
+      this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      this.renderer.setSize(width, height);
+      this.renderer.setPixelRatio(Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2));
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    container.innerHTML = '';
-    container.appendChild(this.renderer.domElement);
+      container.innerHTML = '';
+      container.appendChild(this.renderer.domElement);
+    } catch (err: any) {
+      console.warn('[WebGLAvatarProvider] WebGLRenderer creation failed, using fallback:', err);
+      throw new Error('WebGL unavailable: ' + (err?.message || 'context failed'));
+    }
 
     // Studio Medical Lighting
     this.setupLighting();
@@ -578,7 +583,7 @@ export class WebGLAvatarProvider implements IAvatarProvider {
   }
 
   resize(width: number, height: number): void {
-    if (this.camera && this.renderer) {
+    if (this.camera && this.renderer && width > 0 && height > 0) {
       this.camera.aspect = width / height;
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(width, height);

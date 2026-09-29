@@ -452,7 +452,7 @@ export default function PracticeSessionPage() {
   const questionCount = messages.filter((m) => m.sender === 'student').length;
 
   return (
-    <div className={`flex flex-col h-screen bg-slate-950 text-slate-100 overflow-hidden ${focusMode ? 'fixed inset-0 z-50' : ''}`}>
+    <div className={`flex flex-col h-[100dvh] h-screen bg-slate-950 text-slate-100 overflow-hidden w-full ${focusMode ? 'fixed inset-0 z-50' : ''}`}>
       {/* ──────────────────────────────────────────────────────────── */}
       {/* Consultation Header                                         */}
       {/* ──────────────────────────────────────────────────────────── */}
@@ -584,7 +584,7 @@ export default function PracticeSessionPage() {
         {/* Left / Center: Avatar Stage + Controls */}
         <main className="flex-1 flex flex-col overflow-hidden relative bg-slate-950">
           {/* Central Realistic 3D Avatar Area */}
-          <div className="flex-1 p-3 sm:p-4 min-h-[300px] flex items-center justify-center relative overflow-hidden">
+          <div className="flex-1 p-2 sm:p-4 min-h-[180px] sm:min-h-[260px] flex items-center justify-center relative overflow-hidden">
             <PatientAvatarCanvas
               patientCase={pc as any}
               avatarState={avatarState}
@@ -705,7 +705,7 @@ export default function PracticeSessionPage() {
           )}
 
           {/* Bottom Interaction Control Bar */}
-          <div className="bg-slate-900 border-t border-slate-800 p-4 z-20 flex-shrink-0">
+          <div className="bg-slate-900 border-t border-slate-800 p-2.5 sm:p-4 z-20 flex-shrink-0" style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}>
             <div className="max-w-2xl mx-auto">
               {mode === 'voice' ? (
                 /* VOICE MODE CONTROLS */

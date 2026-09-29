@@ -97,7 +97,7 @@ export default function CaseDetailPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-3.5 sm:p-6 max-w-2xl mx-auto pb-24 md:pb-6">
       <button onClick={() => navigate('/cases')} className="btn-ghost mb-6 -ml-2">
         <ArrowLeft className="w-4 h-4" />
         Back to Cases
@@ -282,9 +282,10 @@ export default function CaseDetailPage() {
 
           {/* CTA */}
           <button
+            type="button"
             onClick={handleStart}
             disabled={isStarting}
-            className="btn-primary w-full py-4 text-base shadow-md font-bold tracking-wide flex items-center justify-center gap-2"
+            className="btn-primary w-full py-4 text-base shadow-md font-bold tracking-wide flex items-center justify-center gap-2 active:scale-98"
           >
             {isStarting ? (
               <span className="flex items-center gap-2 justify-center">

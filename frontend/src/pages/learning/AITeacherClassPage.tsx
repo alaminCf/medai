@@ -707,7 +707,7 @@ ${currentStep.spokenScript}
       {/* ────────────────────────────────────────────────────────
           BOTTOM CLASSROOM CONTROL DECK
          ──────────────────────────────────────────────────────── */}
-      <div className="pt-2 pb-1 border-t border-gray-200 flex-shrink-0 bg-white">
+      <div className="pt-2 pb-1 border-t border-gray-200 flex-shrink-0 bg-white" style={{ paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Main Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">

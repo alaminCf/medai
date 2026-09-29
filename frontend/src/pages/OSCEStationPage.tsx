@@ -541,7 +541,7 @@ export default function OSCEStationPage() {
   const isWarning = remainingSeconds <= 120 && remainingSeconds > 60;
 
   return (
-    <div className="h-screen bg-slate-950 text-white flex flex-col overflow-hidden select-none">
+    <div className="h-[100dvh] h-screen bg-slate-950 text-white flex flex-col overflow-hidden select-none w-full">
       {/* Top Authoritative Exam Station Bar */}
       <header className="h-16 px-4 md:px-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between flex-shrink-0 z-30">
         {/* Left: Station Title & Candidate Instructions Toggle */}
@@ -680,7 +680,7 @@ export default function OSCEStationPage() {
       </div>
 
       {/* Bottom Consultation Controls Bar */}
-      <footer className="bg-slate-900/95 border-t border-slate-800 p-4 z-30">
+      <footer className="bg-slate-900/95 border-t border-slate-800 p-2.5 sm:p-4 z-30" style={{ paddingBottom: "calc(0.625rem + env(safe-area-inset-bottom, 0px))" }}>
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           {/* Main Large Microphone Button */}
           <button
