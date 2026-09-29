@@ -26,7 +26,8 @@
     "multer": "^2.4.0",
     "openai": "^4.28.0",
     "pdf-parse": "^2.4.5",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "prisma": "^5.9.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

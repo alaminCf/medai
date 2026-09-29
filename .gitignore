@@ -3,6 +3,9 @@ dist/
 build/
 .env
 *.db
+!backend/prisma/dev.db
 *.db-journal
 *.log
 .DS_Store
+deploy-pkg/
+deploy-pkg.tar.gz

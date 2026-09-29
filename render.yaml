@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: techboloy-med-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./prisma/dev.db
+      - key: JWT_SECRET
+        value: techboloy-med-secret-key-prod-2026
+      - key: FRONTEND_URL
+        value: http://medai.techboloy.com
