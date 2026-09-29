@@ -124,7 +124,7 @@ export class StudyPlanService {
       subjectIdx++;
     }
 
-    return plan;
+    return await this.getActivePlan(userId);
   }
 
   /**
@@ -142,10 +142,70 @@ export class StudyPlanService {
 
     if (!plan) return null;
 
+    let subjects: string[] = ['Physiology', 'Anatomy', 'Pathology'];
+    try {
+      if (Array.isArray(plan.subjects)) {
+        subjects = plan.subjects;
+      } else if (typeof plan.subjects === 'string') {
+        subjects = JSON.parse(plan.subjects);
+      }
+    } catch (e) {
+      console.warn('Failed to parse studyPlan.subjects:', e);
+    }
+
+    let availableDays: string[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    try {
+      if (Array.isArray(plan.availableDays)) {
+        availableDays = plan.availableDays;
+      } else if (typeof plan.availableDays === 'string') {
+        availableDays = JSON.parse(plan.availableDays);
+      }
+    } catch (e) {
+      console.warn('Failed to parse studyPlan.availableDays:', e);
+    }
+
+    const tasks = (plan.tasks || []).map((t: any) => {
+      let title = '';
+      let category = '';
+      let actionUrl = '';
+
+      switch (t.taskType) {
+        case 'FLASHCARD':
+          category = 'REVISION';
+          title = `${t.topic}: Spaced Repetition Flashcards`;
+          actionUrl = '/flashcards/review';
+          break;
+        case 'MCQ':
+          category = 'PRACTICE';
+          title = `${t.topic}: Adaptive Practice Questions`;
+          actionUrl = `/mcq/adaptive?subject=${encodeURIComponent(t.subject)}&topic=${encodeURIComponent(t.topic)}`;
+          break;
+        case 'VIVA':
+          category = 'VIVA';
+          title = `${t.topic}: Oral Clinical Viva Practice`;
+          actionUrl = `/viva/adaptive?subject=${encodeURIComponent(t.subject)}&topic=${encodeURIComponent(t.topic)}`;
+          break;
+        case 'READING':
+        default:
+          category = 'NEW LEARNING';
+          title = `${t.subject} — ${t.topic}: Core Mechanism Notes`;
+          actionUrl = '/notes';
+          break;
+      }
+
+      return {
+        ...t,
+        category,
+        title,
+        actionUrl,
+      };
+    });
+
     return {
       ...plan,
-      subjects: JSON.parse(plan.subjects),
-      availableDays: JSON.parse(plan.availableDays),
+      subjects,
+      availableDays,
+      tasks,
     };
   }
 
