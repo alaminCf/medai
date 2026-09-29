@@ -1,3 +1,4 @@
+import prisma from './utils/prisma';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -62,6 +63,33 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check
+
+// Debug endpoint for deployment verification
+app.get('/api/debug', async (_req, res) => {
+  try {
+    const userCount = await prisma.user.count();
+    res.json({
+      status: 'ok',
+      version: 'debug-v1',
+      dbUrl: process.env.DATABASE_URL,
+      userCount,
+      jwtSecretSet: !!process.env.JWT_SECRET
+    });
+  } catch (e: any) {
+    res.status(500).json({
+      status: 'error',
+      version: 'debug-v1',
+      dbUrl: process.env.DATABASE_URL,
+      error: e?.message || String(e),
+      stack: e?.stack,
+      cwd: process.cwd(),
+      dirname: __dirname,
+      prismaFiles: fs.existsSync(path.join(process.cwd(), 'prisma')) ? fs.readdirSync(path.join(process.cwd(), 'prisma')) : 'not-found',
+      backendPrismaFiles: fs.existsSync(path.join(process.cwd(), 'backend/prisma')) ? fs.readdirSync(path.join(process.cwd(), 'backend/prisma')) : 'not-found'
+    });
+  }
+});
+
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'techboloy-med-backend', timestamp: new Date().toISOString() });
 });
