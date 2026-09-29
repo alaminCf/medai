@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
+  Camera,
+  Upload,
   Clock,
   Sparkles,
   BookOpen,
@@ -125,6 +127,16 @@ export const StudyPlanPage: React.FC = () => {
   const [examDate, setExamDate] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [applyingPresetId, setApplyingPresetId] = useState<string | null>(null);
+  // Class Material Sync State
+  const [showClassUpload, setShowClassUpload] = useState(false);
+  const [classFile, setClassFile] = useState<File | null>(null);
+  const [classTopic, setClassTopic] = useState('');
+  const [classSubject, setClassSubject] = useState('');
+  const [classMinutes, setClassMinutes] = useState(45);
+  const [isSyncingClass, setIsSyncingClass] = useState(false);
+  const [syncSuccessMessage, setSyncSuccessMessage] = useState('');
+  const [syncError, setSyncError] = useState('');
+
 
   useEffect(() => {
     loadData();
@@ -157,6 +169,45 @@ export const StudyPlanPage: React.FC = () => {
       console.error('Failed to load study plan:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncClassMaterial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!classFile && !classTopic.trim()) {
+      setSyncError('Please upload a photo of your handwritten class note, textbook page, or enter a topic.');
+      return;
+    }
+
+    try {
+      setIsSyncingClass(true);
+      setSyncError('');
+      setSyncSuccessMessage('');
+
+      const formData = new FormData();
+      if (classFile) formData.append('file', classFile);
+      if (classTopic) formData.append('topic', classTopic);
+      if (classSubject) formData.append('subject', classSubject);
+      formData.append('dailyMinutes', String(classMinutes));
+
+      const res = await learningService.createStudyPlanFromClassMaterial(formData);
+
+      if (res.success && res.plan) {
+        setActivePlan(res.plan);
+        setTitle(res.plan.title);
+        setGoal(res.plan.goal);
+        setTodayTasks(res.todayTasks || []);
+        setActiveTab('today');
+        setSyncSuccessMessage(`✅ Successfully synchronized class lecture on "${res.detectedTopic || classTopic || 'Class Topic'}"! Day 0 consolidation tasks are ready below.`);
+        setShowClassUpload(false);
+        setClassFile(null);
+        setClassTopic('');
+      }
+    } catch (err: any) {
+      console.error('Failed to sync class material into study plan:', err);
+      setSyncError(err?.response?.data?.error || 'Failed to analyze class note. Please try again.');
+    } finally {
+      setIsSyncingClass(false);
     }
   };
 
@@ -374,6 +425,156 @@ export const StudyPlanPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Sync Class Material Action Card / Banner */}
+      <div className="bg-gradient-to-r from-teal-50 via-emerald-50 to-white rounded-2xl border-2 border-teal-500/30 p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <Camera className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-navy-900 text-sm sm:text-base">
+                Option 1: Sync Today's Physical Class Note or Book Photo
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-teal-100 text-teal-800">
+                Classroom Sync
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 mt-0.5">
+              Snap a picture of what you studied in physical class today. The AI reads your handwriting or book page and creates a dedicated Spaced Repetition study plan.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowClassUpload(!showClassUpload)}
+          className="px-4 py-2.5 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs shrink-0"
+        >
+          <Upload className="w-4 h-4 text-teal-400" />
+          {showClassUpload ? 'Close Uploader' : 'Snap / Upload Class Note'}
+        </button>
+      </div>
+
+      {/* Expandable Class Note Uploader */}
+      {showClassUpload && (
+        <div className="bg-white rounded-2xl border border-teal-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+            <div>
+              <h4 className="font-bold text-navy-900 text-sm flex items-center gap-2">
+                <Camera className="w-4 h-4 text-teal-600" />
+                Upload Classroom Lecture Note or Book Topic
+              </h4>
+              <p className="text-xs text-gray-500">
+                Supports photos of handwritten notes, whiteboard diagrams, book pages, or lecture slides.
+              </p>
+            </div>
+            <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
+              Handwriting & PDF OCR
+            </span>
+          </div>
+
+          <form onSubmit={handleSyncClassMaterial} className="space-y-4">
+            {syncError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{syncError}</span>
+              </div>
+            )}
+
+            <div className="border-2 border-dashed border-gray-300 hover:border-teal-500 rounded-xl p-5 text-center bg-gray-50/50 transition">
+              <input
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf,.docx,.txt"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setClassFile(f);
+                  if (f && !classTopic) {
+                    setClassTopic(f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '));
+                  }
+                }}
+                className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer"
+              />
+              <p className="text-[11px] text-gray-500 mt-2">
+                Supports JPG, PNG, WEBP, PDF (Max 25 MB). Optical character recognition will extract all medical terms automatically.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Topic Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={classTopic}
+                  onChange={(e) => setClassTopic(e.target.value)}
+                  placeholder="e.g. Aortic Stenosis, Psoriasis"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Subject (Optional)
+                </label>
+                <select
+                  value={classSubject}
+                  onChange={(e) => setClassSubject(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value="">Auto-Detect Subject</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Respiratory Medicine">Respiratory Medicine</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Gastroenterology">Gastroenterology</option>
+                  <option value="Nephrology">Nephrology</option>
+                  <option value="Pharmacology">Pharmacology</option>
+                  <option value="Pathology">Pathology</option>
+                  <option value="Dermatology">Dermatology</option>
+                  <option value="Physiology">Physiology</option>
+                  <option value="Anatomy">Anatomy</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Daily Study Target
+                </label>
+                <select
+                  value={classMinutes}
+                  onChange={(e) => setClassMinutes(parseInt(e.target.value, 10))}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                >
+                  <option value={30}>30 Minutes / day</option>
+                  <option value={45}>45 Minutes / day (Recommended)</option>
+                  <option value={60}>60 Minutes / day</option>
+                  <option value={90}>90 Minutes / day</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSyncingClass}
+              className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              {isSyncingClass ? 'Transcribing & Scheduling Spaced Repetition...' : 'Create Spaced-Repetition Plan for This Lecture'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {syncSuccessMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-xs text-emerald-900 font-medium">
+          <span>{syncSuccessMessage}</span>
+          <button onClick={() => setSyncSuccessMessage('')} className="text-emerald-700 font-bold hover:underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Navigation Segmented Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2 rounded-2xl border border-slate-200/80 shadow-sm">

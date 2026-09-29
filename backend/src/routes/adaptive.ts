@@ -1,3 +1,5 @@
+import multer from 'multer';
+import { LearningAIService } from '../services/learningAIService';
 import { Router, Response } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -10,6 +12,12 @@ import { recommendationService } from '../services/recommendationService';
 import { learningAnalyticsService } from '../services/learningAnalyticsService';
 
 const router = Router();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
 
 // ==========================================
 // 1. ADAPTIVE MCQ & LEARNING DIFFICULTY
@@ -411,5 +419,70 @@ router.get('/analytics/range', authenticate, async (req: AuthRequest, res: Respo
     res.status(500).json({ error: 'Failed to fetch range analytics' });
   }
 });
+
+
+
+/**
+ * POST /api/adaptive/study-plan/from-class-material
+ * Generate spaced-repetition study plan from uploaded class note / book photo
+ */
+router.post(
+  '/study-plan/from-class-material',
+  authenticate,
+  upload.single('file'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const file = req.file;
+      const { topic, subject, title, dailyMinutes, notesText } = req.body;
+
+      let extractedText = notesText || '';
+      let activeSubject = subject;
+      let activeTopic = topic;
+
+      if (file) {
+        const ext = file.originalname.split('.').pop()?.toLowerCase() || 'txt';
+        const transcription = await LearningAIService.transcribeDocument({
+          buffer: file.buffer,
+          ext,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+          userSubject: subject,
+          userTopic: topic,
+        });
+        extractedText = transcription.text;
+        activeSubject = subject && subject !== 'General Medicine' ? subject : transcription.subject;
+        activeTopic = topic && topic.trim() ? topic.trim() : transcription.topic;
+      }
+
+      if (!activeTopic && !extractedText) {
+        res.status(400).json({ error: 'Please upload a class note photo or provide a topic.' });
+        return;
+      }
+
+      const plan = await studyPlanService.createPlanFromClassMaterial(userId, {
+        topic: activeTopic || 'Classroom Topic',
+        subject: activeSubject || 'Clinical Medicine',
+        title: title || `Class Notes: ${activeTopic || 'Daily Lecture'}`,
+        dailyMinutes: dailyMinutes ? parseInt(dailyMinutes, 10) : 45,
+        notesText: extractedText,
+      });
+
+      const todayTasks = await studyPlanService.getTodayTasks(userId);
+
+      res.status(201).json({
+        success: true,
+        plan,
+        todayTasks,
+        transcribedText: extractedText,
+        detectedSubject: activeSubject,
+        detectedTopic: activeTopic,
+      });
+    } catch (error) {
+      console.error('Error creating study plan from class material:', error);
+      res.status(500).json({ error: 'Failed to create study plan from class material' });
+    }
+  }
+);
 
 export default router;

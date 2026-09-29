@@ -340,6 +340,159 @@ export class StudyPlanService {
   }
 
   /**
+   * Generates a Spaced-Repetition Study Plan directly synchronized with a student's uploaded class lecture note / textbook topic.
+   */
+  async createPlanFromClassMaterial(userId: string, data: {
+    topic: string;
+    subject: string;
+    title?: string;
+    dailyMinutes?: number;
+    notesText?: string;
+  }) {
+    const subject = data.subject || 'Clinical Medicine';
+    const topic = data.topic || 'Classroom Topic';
+    const dailyTimeMinutes = data.dailyMinutes || 45;
+    const title = data.title || `Class Notes: ${topic} Plan`;
+
+    // Deactivate previous active plans
+    await prisma.studyPlan.updateMany({
+      where: { userId, isActive: true },
+      data: { isActive: false },
+    });
+
+    const availableDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const now = new Date();
+    const currentDayName = dayNames[now.getDay()];
+
+    const plan = await prisma.studyPlan.create({
+      data: {
+        userId,
+        title,
+        goal: `Master lecture notes on ${topic} with Spaced Repetition`,
+        subjects: JSON.stringify([subject]),
+        availableDays: JSON.stringify(availableDays),
+        dailyTimeMinutes,
+        isActive: true,
+      },
+    });
+
+    // Day 0 (Today): Immediate Consolidation
+    const todayDate = new Date(now);
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'READING',
+        durationMinutes: 20,
+        isCompleted: false,
+      },
+    });
+
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'FLASHCARD',
+        durationMinutes: 10,
+        isCompleted: false,
+      },
+    });
+
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'VIVA',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // Day 1 (Tomorrow): Active Recall Drill
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const tomorrowDayName = dayNames[tomorrow.getDay()];
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: tomorrowDayName,
+        scheduledDate: tomorrow,
+        subject,
+        topic,
+        taskType: 'MCQ',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: tomorrowDayName,
+        scheduledDate: tomorrow,
+        subject,
+        topic,
+        taskType: 'REVISION',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // Day 3: Spaced Repetition Flashcard Drill
+    const day3 = new Date(now);
+    day3.setDate(now.getDate() + 3);
+    const day3Name = dayNames[day3.getDay()];
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: day3Name,
+        scheduledDate: day3,
+        subject,
+        topic,
+        taskType: 'FLASHCARD',
+        durationMinutes: 10,
+        isCompleted: false,
+      },
+    });
+
+    // Day 7: Weekly Retention Mastery Challenge
+    const day7 = new Date(now);
+    day7.setDate(now.getDate() + 7);
+    const day7Name = dayNames[day7.getDay()];
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: day7Name,
+        scheduledDate: day7,
+        subject,
+        topic,
+        taskType: 'MCQ',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    return await this.getActivePlan(userId);
+  }
+
+  /**
    * Toggle completion status of a task
    */
   async toggleTaskCompletion(userId: string, taskId: string) {

@@ -491,6 +491,27 @@ export const learningService = {
     const res = await api.post('/tutor/teacher/interact', data);
     return res.data;
   },
+  // ────────────────────────────────────────────────────────
+  // DUAL-MODE LEARNING HUB & CLASSROOM SYNC
+  // ────────────────────────────────────────────────────────
+  async generateHubFromUpload(formData: FormData): Promise<any> {
+    const res = await api.post('/learning/hub/generate-from-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  async generateAICurriculumHub(params: { subject: string; topic: string; difficulty?: string }): Promise<any> {
+    const res = await api.post('/learning/hub/generate-ai-curriculum', params);
+    return res.data;
+  },
+
+  async createStudyPlanFromClassMaterial(formData: FormData): Promise<any> {
+    const res = await api.post('/adaptive/study-plan/from-class-material', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
 };
 
 export default learningService;

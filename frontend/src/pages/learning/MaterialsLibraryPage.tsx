@@ -308,11 +308,14 @@ export default function MaterialsLibraryPage() {
               {/* File Input */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Document File (PDF, DOCX, TXT) *
+                  Upload Document or Photo (Handwritten Note, Book Photo, PDF, DOCX, TXT) *
                 </label>
+                <div className="mb-2 flex items-center gap-1.5 text-[11px] text-teal-700 bg-teal-50 px-2.5 py-1 rounded-md border border-teal-100 font-medium">
+                  <span>📸</span> Supports photos of handwritten lecture notes & textbook pages via OCR!
+                </div>
                 <input
                   type="file"
-                  accept=".pdf,.docx,.txt"
+                  accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.webp"
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     setUploadFile(file);

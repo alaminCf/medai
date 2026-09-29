@@ -1,3 +1,4 @@
+import { studyPlanService } from '../services/studyPlanService';
 import { Router, Response } from 'express';
 import multer from 'multer';
 import prisma from '../utils/prisma';
@@ -271,7 +272,7 @@ router.post(
 
       const originalName = file.originalname;
       const ext = originalName.split('.').pop()?.toLowerCase() || 'txt';
-      const allowed = ['pdf', 'txt', 'docx', 'pptx', 'md'];
+      const allowed = ['pdf', 'txt', 'docx', 'pptx', 'md', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
 
       if (!allowed.includes(ext)) {
         res.status(400).json({ error: `Unsupported file format .${ext}. Please upload a PDF, DOCX, or text file.` });
@@ -296,18 +297,26 @@ router.post(
         },
       });
 
-      // Asynchronous / immediate text extraction
+      // Multimodal handwriting / OCR / document extraction
       let extractedText = '';
       try {
-        extractedText = await extractText(file.buffer, ext);
+        const ocrResult = await LearningAIService.transcribeDocument({
+          buffer: file.buffer,
+          ext,
+          mimeType: file.mimetype,
+          originalName,
+          userSubject: subject,
+          userTopic: topic,
+        });
 
-        // Clean extracted text (remove excessive nulls or repetitive whitespaces)
-        extractedText = extractedText.replace(/\0/g, '').replace(/\r\n/g, '\n').trim();
+        extractedText = ocrResult.text;
 
         await prisma.studyMaterial.update({
           where: { id: material.id },
           data: {
             extractedText: extractedText || 'Text extraction complete, but no readable characters were found.',
+            subject: subject && subject !== 'General Medicine' ? subject : ocrResult.subject,
+            topic: topic && topic.trim() ? topic.trim() : ocrResult.topic,
             processingStatus: 'READY',
           },
         });
@@ -851,5 +860,275 @@ router.get('/progress', async (req: AuthRequest, res: Response): Promise<void> =
     res.status(500).json({ error: 'Failed to calculate study progress.' });
   }
 });
+
+
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/learning/hub/generate-from-upload - Multimodal Class Note Hub Engine
+// ────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/hub/generate-from-upload',
+  upload.single('file'),
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const file = req.file;
+      const { title, subject, topic, rawText, materialId } = req.body;
+
+      let extractedText = rawText || '';
+      let activeSubject = subject;
+      let activeTopic = topic;
+      let materialRecord: any = null;
+
+      if (materialId) {
+        materialRecord = await prisma.studyMaterial.findFirst({ where: { id: materialId, userId } });
+        if (materialRecord) {
+          extractedText = materialRecord.extractedText || materialRecord.title;
+          activeSubject = activeSubject || materialRecord.subject;
+          activeTopic = activeTopic || materialRecord.topic;
+        }
+      } else if (file) {
+        const ext = file.originalname.split('.').pop()?.toLowerCase() || 'txt';
+        const transcription = await LearningAIService.transcribeDocument({
+          buffer: file.buffer,
+          ext,
+          mimeType: file.mimetype,
+          originalName: file.originalname,
+          userSubject: subject,
+          userTopic: topic,
+        });
+
+        extractedText = transcription.text;
+        activeSubject = subject && subject !== 'General Medicine' ? subject : transcription.subject;
+        activeTopic = topic && topic.trim() ? topic.trim() : transcription.topic;
+
+        // Save StudyMaterial in DB
+        materialRecord = await prisma.studyMaterial.create({
+          data: {
+            userId,
+            title: title || activeTopic || file.originalname.replace(/\.[^/.]+$/, ''),
+            originalFileName: file.originalname,
+            fileType: ext,
+            fileSize: file.size,
+            subject: activeSubject || 'Clinical Medicine',
+            topic: activeTopic || null,
+            description: `Classroom material transcribed via ${transcription.method} (${transcription.detectedType})`,
+            extractedText,
+            processingStatus: 'READY',
+            reviewStatus: 'APPROVED',
+          },
+        });
+      }
+
+      if (!extractedText && !activeTopic) {
+        res.status(400).json({ error: 'Please upload a handwritten note image, book photo, PDF, or enter topic text.' });
+        return;
+      }
+
+      // Generate complete Daily Hub Package
+      const hubPackage = await LearningAIService.generateDailyHubPackage({
+        extractedText: extractedText || `${activeTopic} (${activeSubject})`,
+        subject: activeSubject,
+        topic: activeTopic,
+        title: title || `${activeTopic} — Class Hub`,
+      });
+
+      // 1. Save StudyNote in DB
+      let savedNote: any = null;
+      try {
+        savedNote = await prisma.studyNote.create({
+          data: {
+            userId,
+            materialId: materialRecord?.id || null,
+            title: `${hubPackage.topic} — High-Yield Lecture Notes`,
+            content: `${hubPackage.summary.overview}\n\n### Key Pathophysiology & Concepts\n${hubPackage.summary.keyConcepts.map(c => `• ${c}`).join('\n')}\n\n### Clinical Relevance\n${hubPackage.summary.clinicalRelevance.map(r => `• ${r}`).join('\n')}\n\n### Exam High-Yield Points\n${hubPackage.summary.examPoints.map(p => `• ${p}`).join('\n')}\n\n### Quick Revision\n${hubPackage.summary.quickRevision}`,
+            subject: hubPackage.subject,
+            topic: hubPackage.topic,
+            tags: JSON.stringify(['class-notes', 'ai-hub', hubPackage.subject]),
+            sourceType: 'AI_GENERATED',
+          },
+        });
+      } catch (noteErr) {
+        console.warn('Failed to save study note:', noteErr);
+      }
+
+      // 2. Save FlashcardDeck & Flashcards in DB
+      let savedDeck: any = null;
+      try {
+        savedDeck = await prisma.flashcardDeck.create({
+          data: {
+            userId,
+            materialId: materialRecord?.id || null,
+            title: `${hubPackage.topic} — Class Flashcards`,
+            subject: hubPackage.subject,
+            topic: hubPackage.topic,
+            description: `Auto-generated from uploaded class notes on ${hubPackage.topic}`,
+            flashcards: {
+              create: hubPackage.flashcards.map(c => ({
+                question: c.question,
+                answer: c.answer,
+                explanation: c.explanation,
+                sourceReference: c.sourceReference || `${hubPackage.topic} Class Notes`,
+                difficulty: c.difficulty,
+              })),
+            },
+          },
+          include: { flashcards: true },
+        });
+      } catch (deckErr) {
+        console.warn('Failed to save flashcard deck:', deckErr);
+      }
+
+      // 3. Save QuestionBank & MCQs in DB
+      let savedBank: any = null;
+      try {
+        savedBank = await prisma.questionBank.create({
+          data: {
+            userId,
+            title: `${hubPackage.topic} — Practice MCQ Bank`,
+            subject: hubPackage.subject,
+            topic: hubPackage.topic,
+            description: `Auto-generated MCQs from class notes on ${hubPackage.topic}`,
+            questions: {
+              create: hubPackage.mcqs.map(q => ({
+                question: q.question,
+                optionA: q.optionA,
+                optionB: q.optionB,
+                optionC: q.optionC,
+                optionD: q.optionD,
+                correctOption: q.correctOption,
+                explanation: q.explanation,
+                difficulty: q.difficulty,
+                sourceReference: q.sourceReference || `${hubPackage.topic} Notes`,
+              })),
+            },
+          },
+          include: { questions: true },
+        });
+      } catch (bankErr) {
+        console.warn('Failed to save question bank:', bankErr);
+      }
+
+      // 4. Automatically schedule in student's Study Plan
+      let studyPlanResult: any = null;
+      try {
+        studyPlanResult = await studyPlanService.createPlanFromClassMaterial(userId, {
+          topic: hubPackage.topic,
+          subject: hubPackage.subject,
+          title: `Class Notes: ${hubPackage.topic}`,
+          dailyMinutes: 45,
+          notesText: extractedText,
+        });
+      } catch (planErr) {
+        console.warn('Failed to auto-schedule study plan tasks:', planErr);
+      }
+
+      res.status(201).json({
+        success: true,
+        material: materialRecord,
+        hubPackage,
+        savedNote,
+        savedDeck,
+        savedBank,
+        studyPlan: studyPlanResult,
+      });
+    } catch (error) {
+      console.error('Error generating hub from upload:', error);
+      res.status(500).json({ error: 'Failed to generate learning hub from uploaded material.' });
+    }
+  }
+);
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/learning/hub/generate-ai-curriculum - Standard AI Curriculum Engine
+// ────────────────────────────────────────────────────────────────────────────
+router.post(
+  '/hub/generate-ai-curriculum',
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const userId = req.user!.id;
+      const { subject, topic, difficulty } = req.body;
+
+      if (!subject || !topic) {
+        res.status(400).json({ error: 'Subject and topic are required.' });
+        return;
+      }
+
+      const hubPackage = await LearningAIService.generateDailyHubPackage({
+        extractedText: `${topic} in ${subject}. Comprehensive medical school core lecture curriculum.`,
+        subject,
+        topic,
+        title: `${topic} — Curriculum Learning Hub`,
+        difficulty: difficulty || 'medium',
+      });
+
+      // Save Deck in DB
+      let savedDeck: any = null;
+      try {
+        savedDeck = await prisma.flashcardDeck.create({
+          data: {
+            userId,
+            title: `${hubPackage.topic} — Curriculum Flashcards`,
+            subject: hubPackage.subject,
+            topic: hubPackage.topic,
+            description: `AI-curated medical flashcards for ${hubPackage.topic}`,
+            flashcards: {
+              create: hubPackage.flashcards.map(c => ({
+                question: c.question,
+                answer: c.answer,
+                explanation: c.explanation,
+                sourceReference: `${hubPackage.subject} Curriculum`,
+                difficulty: c.difficulty,
+              })),
+            },
+          },
+          include: { flashcards: true },
+        });
+      } catch (e) {
+        console.warn('Curriculum deck save error:', e);
+      }
+
+      // Save MCQ Bank in DB
+      let savedBank: any = null;
+      try {
+        savedBank = await prisma.questionBank.create({
+          data: {
+            userId,
+            title: `${hubPackage.topic} — Curriculum MCQ Bank`,
+            subject: hubPackage.subject,
+            topic: hubPackage.topic,
+            description: `AI-curated clinical questions for ${hubPackage.topic}`,
+            questions: {
+              create: hubPackage.mcqs.map(q => ({
+                question: q.question,
+                optionA: q.optionA,
+                optionB: q.optionB,
+                optionC: q.optionC,
+                optionD: q.optionD,
+                correctOption: q.correctOption,
+                explanation: q.explanation,
+                difficulty: q.difficulty,
+                sourceReference: `${hubPackage.subject} Curriculum`,
+              })),
+            },
+          },
+          include: { questions: true },
+        });
+      } catch (e) {
+        console.warn('Curriculum bank save error:', e);
+      }
+
+      res.status(200).json({
+        success: true,
+        hubPackage,
+        savedDeck,
+        savedBank,
+      });
+    } catch (error) {
+      console.error('Error generating curriculum hub:', error);
+      res.status(500).json({ error: 'Failed to generate AI curriculum learning hub.' });
+    }
+  }
+);
 
 export default router;

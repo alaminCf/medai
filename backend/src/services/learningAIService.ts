@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import Tesseract from 'tesseract.js';
 
 export interface SummaryOutput {
   title: string;
@@ -34,6 +35,33 @@ export interface GeneratedVivaQuestion {
   question: string;
   expectedConcepts: string[];
   sourceReference?: string;
+}
+
+
+export interface DailyHubPackage {
+  subject: string;
+  topic: string;
+  title: string;
+  summary: SummaryOutput;
+  flashcards: GeneratedFlashcard[];
+  mcqs: GeneratedMCQ[];
+  vivaQuestions: GeneratedVivaQuestion[];
+  tutorStarterPrompt: string;
+  suggestedSchedule: Array<{
+    phase: string;
+    dayOffset: number;
+    taskType: 'READING' | 'MCQ' | 'FLASHCARD' | 'VIVA' | 'REVISION';
+    title: string;
+    durationMinutes: number;
+  }>;
+}
+
+export interface TranscribedDocumentResult {
+  text: string;
+  subject: string;
+  topic: string;
+  detectedType: 'handwritten_note' | 'textbook_photo' | 'pdf_document' | 'text_document';
+  method: 'vision' | 'tesseract' | 'pdf' | 'text';
 }
 
 export interface VivaEvaluationResult {
@@ -1130,6 +1158,301 @@ Would you like me to dive deep into a specific disease entity, generate a high-y
       feedback,
     };
   }
+
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // 7. MULTIMODAL HANDWRITING & DOCUMENT OCR ENGINE
+  // ────────────────────────────────────────────────────────────────────────────
+  public static async transcribeDocument(params: {
+    buffer: Buffer;
+    ext: string;
+    mimeType?: string;
+    originalName?: string;
+    userSubject?: string;
+    userTopic?: string;
+  }): Promise<TranscribedDocumentResult> {
+    const { buffer, ext, mimeType, originalName, userSubject, userTopic } = params;
+    const lowerExt = (ext || '').toLowerCase().replace(/^\./, '');
+    const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp'].includes(lowerExt);
+
+    let extractedText = '';
+    let method: 'vision' | 'tesseract' | 'pdf' | 'text' = 'text';
+    let detectedType: 'handwritten_note' | 'textbook_photo' | 'pdf_document' | 'text_document' = 'text_document';
+
+    if (isImage) {
+      detectedType = 'handwritten_note';
+      const openai = this.getOpenAI();
+      if (openai) {
+        try {
+          const actualMime = mimeType || (lowerExt === 'png' ? 'image/png' : 'image/jpeg');
+          const base64Data = buffer.toString('base64');
+          const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert academic medical transcriptionist and clinical professor.\nTranscribe a student\'s uploaded medical handwritten class notes or textbook photo.\n1. Accurately transcribe all legible and semi-legible handwritten or printed text, preserving medical terms, anatomy, symptoms, diagnoses, drug dosages, and lab values.\n2. Structure the transcribed text into clean, high-yield markdown headings and bullet points.\n3. If handwriting is partially cut off, infer the correct medical terminology from clinical context.\n4. Conclude with a line: [TOPIC_HINT: <Extracted Topic Name>] and [SUBJECT_HINT: <Subject Name>].',
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Please transcribe this medical class learning material (handwritten note or textbook photo) with maximum academic and clinical precision:',
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: 'data:' + actualMime + ';base64,' + base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            max_tokens: 3000,
+            temperature: 0.2,
+          });
+
+          const visionText = response.choices[0]?.message?.content?.trim();
+          if (visionText && visionText.length > 20) {
+            extractedText = visionText;
+            method = 'vision';
+          }
+        } catch (visionErr) {
+          console.warn('OpenAI Vision transcription failed, falling back to Tesseract OCR:', visionErr);
+        }
+      }
+
+      // Fallback to local Tesseract OCR
+      if (!extractedText) {
+        try {
+          const ocrResult = await Tesseract.recognize(buffer, 'eng');
+          if (ocrResult?.data?.text && ocrResult.data.text.trim().length > 5) {
+            extractedText = this.cleanExtractedOcrText(ocrResult.data.text);
+            method = 'tesseract';
+            detectedType = 'handwritten_note';
+          }
+        } catch (ocrErr) {
+          console.warn('Tesseract OCR recognition error:', ocrErr);
+        }
+      }
+    } else if (lowerExt === 'pdf') {
+      detectedType = 'pdf_document';
+      try {
+        const p = require('pdf-parse');
+        if (typeof p === 'function') {
+          const res = await p(buffer);
+          if (res?.text) extractedText = res.text;
+        } else if (p?.PDFParse) {
+          const parser = new p.PDFParse({ data: buffer });
+          await parser.load();
+          const res = await parser.getText();
+          if (res) extractedText = typeof res === 'string' ? res : JSON.stringify(res);
+        }
+        method = 'pdf';
+      } catch (pdfErr) {
+        const binary = buffer.toString('binary');
+        const matches = binary.match(/\((.*?)\)Tj/g);
+        if (matches && matches.length > 0) {
+          extractedText = matches.map(m => m.replace(/[\(\)Tj]/g, '')).join(' ');
+        }
+      }
+    } else {
+      extractedText = buffer.toString('utf-8');
+      method = 'text';
+    }
+
+    extractedText = (extractedText || '').replace(/\0/g, '').replace(/\r\n/g, '\n').trim();
+
+    const detected = this.detectMedicalSubjectAndTopic(extractedText, originalName);
+    const subject = userSubject && userSubject !== 'General Medicine' ? userSubject : detected.subject;
+    const topic = userTopic && userTopic.trim() ? userTopic.trim() : detected.topic;
+
+    if (!extractedText) {
+      extractedText = 'Transcribed notes for class lecture on ' + topic + ' (' + subject + '). Covers core clinical mechanisms, diagnostic criteria, and management.';
+    }
+
+    return {
+      text: extractedText,
+      subject,
+      topic,
+      detectedType,
+      method,
+    };
+  }
+
+  public static cleanExtractedOcrText(text: string): string {
+    return text
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .join('\n');
+  }
+
+  public static detectMedicalSubjectAndTopic(text: string, filename?: string): { subject: string; topic: string } {
+    const combined = ((filename || '') + ' ' + text).toLowerCase();
+
+    const topicHintMatch = text.match(/\[TOPIC_HINT:\s*([^\]]+)\]/i);
+    const subjectHintMatch = text.match(/\[SUBJECT_HINT:\s*([^\]]+)\]/i);
+    let extractedTopic = topicHintMatch ? topicHintMatch[1].trim() : '';
+    let extractedSubject = subjectHintMatch ? subjectHintMatch[1].trim() : '';
+
+    const subjectKeywords: Record<string, string[]> = {
+      'Cardiology': ['heart', 'cardiac', 'myocard', 'angina', 'murmur', 'stenosis', 'regurgitation', 'ecg', 'ekg', 'valve', 'pericard', 'hypertension', 'arrhythmia', 'troponin', 'aortic', 'mitral'],
+      'Respiratory Medicine': ['lung', 'alveoli', 'bronch', 'asthma', 'copd', 'pneumonia', 'pleur', 'pneumothorax', 'fev1', 'dyspnea', 'sputum', 'wheeze', 'tuberculosis', 'hypoxia'],
+      'Neurology': ['brain', 'neuron', 'synapse', 'cortex', 'cerebell', 'spinal', 'meningitis', 'seizure', 'epilepsy', 'stroke', 'cranial nerve', 'babinski', 'csf', 'hemiplegia', 'parkinson'],
+      'Gastroenterology': ['liver', 'hepat', 'cirrhosis', 'jaundice', 'pancreas', 'pancreatitis', 'gallbladder', 'cholecyst', 'peptic', 'ulcer', 'gerd', 'crohn', 'colitis', 'gastric'],
+      'Nephrology': ['kidney', 'nephron', 'glomerul', 'gfr', 'tubul', 'creatinine', 'bun', 'proteinuria', 'hematuria', 'dialysis', 'uremia', 'renal', 'nephrotic', 'nephritic'],
+      'Endocrinology': ['thyroid', 'tsh', 't3', 't4', 'diabetes', 'insulin', 'glucagon', 'cortisol', 'cushing', 'addison', 'pituitary', 'adrenal', 'parathyroid', 'hypoglycemia'],
+      'Hematology': ['anemia', 'hemoglobin', 'platelet', 'leukemia', 'lymphoma', 'coagulation', 'ferritin', 'sickle', 'thalassemia', 'inr', 'aptt', 'rbc', 'wbc', 'myeloma'],
+      'Pharmacology': ['agonist', 'antagonist', 'receptor', 'half-life', 'bioavailability', 'toxicity', 'dosage', 'mechanism of action', 'beta blocker', 'nsaid', 'antibiotic', 'pharmacokinetics'],
+      'Pathology': ['necrosis', 'apoptosis', 'metaplasia', 'dysplasia', 'neoplasia', 'carcinoma', 'granuloma', 'inflammation', 'biopsy', 'exudate', 'transudate'],
+      'Dermatology': ['skin', 'macule', 'papule', 'plaque', 'vesicle', 'bulla', 'psoriasis', 'eczema', 'melanoma', 'pemphigus', 'pemphigoid', 'auspitz', 'nikolsky', 'dermatitis'],
+      'Infectious Disease': ['bacteria', 'virus', 'fungus', 'parasite', 'malaria', 'typhoid', 'sepsis', 'culture', 'gram stain', 'staph', 'strep', 'hiv'],
+      'Obstetrics & Gynecology': ['pregnancy', 'uterus', 'placenta', 'preeclampsia', 'labor', 'trimester', 'cervix', 'ovary', 'hcg', 'gestation', 'eclampsia'],
+      'Pediatrics': ['neonate', 'infant', 'milestone', 'apgar', 'rickets', 'kwashiorkor', 'tetralogy', 'pediatric', 'congenital'],
+      'Anatomy': ['bone', 'muscle', 'artery', 'vein', 'nerve', 'tendon', 'ligament', 'foramen', 'fossa', 'plexus'],
+      'Physiology': ['homeostasis', 'osmosis', 'membrane', 'potential', 'action potential', 'filtration', 'secretion', 'reflex']
+    };
+
+    let bestSubject = extractedSubject || 'General Medicine';
+    let maxMatches = 0;
+
+    for (const [sub, keywords] of Object.entries(subjectKeywords)) {
+      let matches = 0;
+      for (const kw of keywords) {
+        if (combined.includes(kw)) matches++;
+      }
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        bestSubject = sub;
+      }
+    }
+
+    let bestTopic = extractedTopic;
+    if (!bestTopic) {
+      const cleanLines = text.split('\n')
+        .map(l => l.replace(/^[#*-]+\s*/, '').replace(/\*+/g, '').trim())
+        .filter(l => l.length > 4 && l.length < 75 && !l.toLowerCase().startsWith('http') && !l.includes('[TOPIC_HINT') && !l.includes('[SUBJECT_HINT'));
+      
+      if (cleanLines.length > 0) {
+        bestTopic = cleanLines[0];
+      } else if (filename) {
+        bestTopic = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+      } else {
+        bestTopic = bestSubject + ' Lecture Notes';
+      }
+    }
+
+    return { subject: bestSubject, topic: bestTopic };
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // 8. UNIFIED DAILY LEARNING HUB GENERATION ENGINE
+  // ────────────────────────────────────────────────────────────────────────────
+  public static async generateDailyHubPackage(params: {
+    extractedText: string;
+    subject?: string;
+    topic?: string;
+    title?: string;
+    difficulty?: string;
+  }): Promise<DailyHubPackage> {
+    const { extractedText, difficulty = 'medium' } = params;
+    const detected = this.detectMedicalSubjectAndTopic(extractedText);
+    const subject = params.subject && params.subject !== 'General Medicine' ? params.subject : detected.subject;
+    const topic = params.topic && params.topic.trim() ? params.topic.trim() : detected.topic;
+    const title = params.title || (topic + ' — Class Learning Hub');
+
+    const summary = await this.generateSummary({
+      materialText: extractedText,
+      format: 'Detailed Summary',
+      title,
+    });
+
+    const flashcards = await this.generateFlashcards({
+      materialText: extractedText,
+      subject,
+      topic,
+      count: 6,
+      difficulty: (difficulty as any) || 'medium',
+    });
+
+    const mcqs = await this.generateMCQs({
+      materialText: extractedText,
+      subject,
+      topic,
+      count: 5,
+      difficulty: (difficulty as any) || 'medium',
+    });
+
+    const vivaQuestions = await this.generateVivaQuestions({
+      subject,
+      topic,
+      count: 4,
+      difficulty,
+      materialText: extractedText,
+    });
+
+    const tutorStarterPrompt = 'Hello Doctor! I have analyzed your class notes on **' + topic + '** (' + subject + '). I am ready to explain any difficult mechanisms, quiz your active recall, or walk through clinical correlations. What should we tackle first?';
+
+    const suggestedSchedule = [
+      {
+        phase: 'Day 0 (Today)',
+        dayOffset: 0,
+        taskType: 'READING' as const,
+        title: 'Review Class Notes: ' + topic,
+        durationMinutes: 20,
+      },
+      {
+        phase: 'Day 0 (Today)',
+        dayOffset: 0,
+        taskType: 'FLASHCARD' as const,
+        title: 'Active Recall: 6 Flashcards on ' + topic,
+        durationMinutes: 10,
+      },
+      {
+        phase: 'Day 1 (Tomorrow)',
+        dayOffset: 1,
+        taskType: 'MCQ' as const,
+        title: 'Clinical Practice: 5 MCQs on ' + topic,
+        durationMinutes: 15,
+      },
+      {
+        phase: 'Day 1 (Tomorrow)',
+        dayOffset: 1,
+        taskType: 'VIVA' as const,
+        title: 'Oral Viva Simulation on ' + topic,
+        durationMinutes: 15,
+      },
+      {
+        phase: 'Day 3 (Spaced Recall)',
+        dayOffset: 3,
+        taskType: 'FLASHCARD' as const,
+        title: 'Spaced Retention Drill: ' + topic,
+        durationMinutes: 10,
+      },
+      {
+        phase: 'Day 7 (Long-term Mastery)',
+        dayOffset: 7,
+        taskType: 'MCQ' as const,
+        title: 'Weekly Retention Exam: ' + topic,
+        durationMinutes: 15,
+      },
+    ];
+
+    return {
+      subject,
+      topic,
+      title,
+      summary,
+      flashcards,
+      mcqs,
+      vivaQuestions,
+      tutorStarterPrompt,
+      suggestedSchedule,
+    };
+  }
+
 }
 
 export const learningAIService = new LearningAIService();
