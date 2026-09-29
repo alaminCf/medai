@@ -91,7 +91,7 @@ app.get('/api/debug', async (_req, res) => {
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'techboloy-med-backend', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'techboloy-med-backend', version: '2.0.0-stateful-patient-engine', timestamp: new Date().toISOString() });
 });
 
 // API Routes
