@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
+  UserCheck,
+  Bot,
   Calendar,
   Camera,
   Upload,
@@ -187,7 +189,9 @@ export const StudyPlanPage: React.FC = () => {
       const formData = new FormData();
       if (classFile) formData.append('file', classFile);
       if (classTopic) formData.append('topic', classTopic);
-      if (classSubject) formData.append('subject', classSubject);
+      if (classSubject && classSubject !== 'Auto-Detect Subject') {
+        formData.append('subject', classSubject);
+      }
       formData.append('dailyMinutes', String(classMinutes));
 
       const res = await learningService.createStudyPlanFromClassMaterial(formData);
@@ -318,6 +322,12 @@ export const StudyPlanPage: React.FC = () => {
 
   const getTaskIcon = (type: string) => {
     switch (type) {
+      case 'AI_PATIENT':
+        return <UserCheck className="w-4 h-4 text-emerald-600" />;
+      case 'AI_TUTOR':
+        return <Bot className="w-4 h-4 text-sky-600" />;
+      case 'OSCE':
+        return <Award className="w-4 h-4 text-purple-600" />;
       case 'FLASHCARD':
         return <Brain className="w-4 h-4 text-indigo-500" />;
       case 'MCQ':
@@ -332,6 +342,12 @@ export const StudyPlanPage: React.FC = () => {
 
   const getTaskActionLabel = (type: string) => {
     switch (type) {
+      case 'AI_PATIENT':
+        return 'Consult AI Patient';
+      case 'AI_TUTOR':
+        return 'Ask AI Tutor';
+      case 'OSCE':
+        return 'Practice OSCE';
       case 'FLASHCARD':
         return 'Review Cards';
       case 'MCQ':
@@ -347,6 +363,12 @@ export const StudyPlanPage: React.FC = () => {
   const getTaskActionUrl = (t: StudyPlanTask) => {
     if (t.actionUrl) return t.actionUrl;
     switch (t.taskType) {
+      case 'AI_PATIENT':
+        return `/cases?topic=${encodeURIComponent(t.topic)}`;
+      case 'AI_TUTOR':
+        return `/ai-tutor?topic=${encodeURIComponent(t.topic)}`;
+      case 'OSCE':
+        return `/exams?topic=${encodeURIComponent(t.topic)}`;
       case 'FLASHCARD':
         return '/flashcards/review';
       case 'MCQ':

@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  UserCheck,
+  Bot,
+  Award,
+  Stethoscope,
   BookOpen,
   FileText,
   Brain,
@@ -132,7 +136,7 @@ export default function LearningHubPage() {
 
   // Generated Daily Hub Cockpit State
   const [activeHub, setActiveHub] = useState<GeneratedHubData | null>(null);
-  const [activeCockpitTab, setActiveCockpitTab] = useState<'SUMMARY' | 'FLASHCARDS' | 'MCQS' | 'VIVA' | 'SCHEDULE'>('SUMMARY');
+  const [activeCockpitTab, setActiveCockpitTab] = useState<'SUMMARY' | 'FLASHCARDS' | 'MCQS' | 'VIVA' | 'PATIENT' | 'TUTOR' | 'OSCE' | 'SCHEDULE'>('SUMMARY');
 
   // Cockpit Interactive Flashcard State
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
@@ -902,12 +906,48 @@ export default function LearningHubPage() {
               onClick={() => setActiveCockpitTab('VIVA')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                 activeCockpitTab === 'VIVA'
-                  ? 'bg-purple-600 text-white shadow-xs'
+                  ? 'bg-rose-600 text-white shadow-xs'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               <GraduationCap className="w-3.5 h-3.5" />
-              4. Oral Viva Questions ({activeHub.vivaQuestions?.length || 0})
+              4. Oral Viva ({activeHub.vivaQuestions?.length || 0})
+            </button>
+
+            <button
+              onClick={() => setActiveCockpitTab('PATIENT')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                activeCockpitTab === 'PATIENT'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Stethoscope className="w-3.5 h-3.5" />
+              5. Virtual AI Patient
+            </button>
+
+            <button
+              onClick={() => setActiveCockpitTab('TUTOR')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                activeCockpitTab === 'TUTOR'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Bot className="w-3.5 h-3.5" />
+              6. AI Medical Tutor
+            </button>
+
+            <button
+              onClick={() => setActiveCockpitTab('OSCE')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                activeCockpitTab === 'OSCE'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              7. OSCE Station
             </button>
 
             <button
@@ -919,7 +959,7 @@ export default function LearningHubPage() {
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />
-              5. Spaced Repetition Plan
+              8. Spaced Plan
             </button>
           </div>
 
@@ -1229,6 +1269,204 @@ export default function LearningHubPage() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: VIRTUAL AI PATIENT */}
+          {activeCockpitTab === 'PATIENT' && (
+            <div className="pt-5 space-y-6">
+              <div className="bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-200 rounded-2xl p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-emerald-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
+                      <Stethoscope className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">
+                        Clinical Case Simulation
+                      </span>
+                      <h3 className="font-bold text-gray-900 text-base mt-1">
+                        Virtual Patient Consultation: {activeHub.topic}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Practice real-time interactive patient interview, differential diagnosis, and management plan.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/cases?topic=${encodeURIComponent(activeHub.topic)}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition whitespace-nowrap"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    Start Live AI Patient Simulation
+                  </Link>
+                </div>
+
+                {/* Patient Case Presentation */}
+                <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white/90 border border-emerald-100 rounded-xl space-y-2">
+                    <h4 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Patient Presentation & Symptoms
+                    </h4>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      A patient arrives at the clinic presenting with hallmark signs associated with <strong>{activeHub.topic}</strong> ({activeHub.subject}). Elicit chief complaints, timeline of onset, aggravating factors, and past medical history.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white/90 border border-emerald-100 rounded-xl space-y-2">
+                    <h4 className="font-bold text-xs text-gray-900 flex items-center gap-1.5">
+                      <Flame className="w-3.5 h-3.5 text-amber-600" />
+                      Key Clinical Learning Objectives
+                    </h4>
+                    <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
+                      {activeHub.summary.clinicalRelevance.slice(0, 3).map((cr, idx) => (
+                        <li key={idx}>{cr}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: AI MEDICAL TUTOR */}
+          {activeCockpitTab === 'TUTOR' && (
+            <div className="pt-5 space-y-6">
+              <div className="bg-gradient-to-br from-sky-500/10 via-indigo-500/5 to-transparent border border-sky-200 rounded-2xl p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-sky-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-sky-600 text-white flex items-center justify-center shadow-md">
+                      <Bot className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-sky-100 text-sky-800 rounded-full">
+                        Academic Clinical Faculty
+                      </span>
+                      <h3 className="font-bold text-gray-900 text-base mt-1">
+                        AI Medical Tutor: {activeHub.topic}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Ask deep mechanistic questions, clarify confusing concepts, and drill active clinical recall.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    to="/ai-tutor"
+                    state={{
+                      initialMessage: activeHub.tutorStarterPrompt,
+                      initialSubject: activeHub.subject,
+                      initialTopic: activeHub.topic,
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded-xl shadow-md transition whitespace-nowrap"
+                  >
+                    <Bot className="w-4 h-4" />
+                    Open Live Tutor Discussion
+                  </Link>
+                </div>
+
+                {/* Tutor Starter & Suggested Queries */}
+                <div className="mt-5 space-y-4">
+                  <div className="p-4 bg-white/90 border border-sky-100 rounded-xl">
+                    <h4 className="font-bold text-xs text-sky-900 mb-1">Tutor Initial Assessment:</h4>
+                    <p className="text-xs text-gray-800 leading-relaxed font-medium">
+                      "{activeHub.tutorStarterPrompt}"
+                    </p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                      Suggested Clinical Concept Drills:
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        `Explain the core mechanism and pathophysiology of ${activeHub.topic}`,
+                        `What are the most frequent exam traps and diagnostic pitfalls in ${activeHub.topic}?`,
+                        `Give me a rapid 3-question viva drill on ${activeHub.topic}`,
+                      ].map((promptText, pIdx) => (
+                        <Link
+                          key={pIdx}
+                          to="/ai-tutor"
+                          state={{
+                            initialMessage: promptText,
+                            initialSubject: activeHub.subject,
+                            initialTopic: activeHub.topic,
+                          }}
+                          className="p-3 bg-white hover:bg-sky-50/70 border border-sky-100 hover:border-sky-300 rounded-xl text-left transition flex flex-col justify-between group"
+                        >
+                          <span className="text-xs text-gray-800 group-hover:text-sky-900 font-medium">
+                            "{promptText}"
+                          </span>
+                          <span className="text-[10px] text-sky-600 font-bold mt-2 flex items-center gap-1">
+                            Ask Tutor <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition" />
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 7: OSCE CLINICAL STATION */}
+          {activeCockpitTab === 'OSCE' && (
+            <div className="pt-5 space-y-6">
+              <div className="bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent border border-purple-200 rounded-2xl p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-purple-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center shadow-md">
+                      <Award className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-purple-100 text-purple-800 rounded-full">
+                        Practical Exam Simulation • 8 Minutes
+                      </span>
+                      <h3 className="font-bold text-gray-900 text-base mt-1">
+                        OSCE Station: {activeHub.topic}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Simulated physical examination, patient counseling, and clinical management station.
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/exams?topic=${encodeURIComponent(activeHub.topic)}`}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-md transition whitespace-nowrap"
+                  >
+                    <Award className="w-4 h-4" />
+                    Launch OSCE Station Exam
+                  </Link>
+                </div>
+
+                {/* Candidate Instructions & Checklist */}
+                <div className="mt-5 space-y-4">
+                  <div className="p-4 bg-white/90 border border-purple-100 rounded-xl space-y-2">
+                    <h4 className="font-bold text-xs text-purple-900">Candidate Briefing:</h4>
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      You are the Junior Doctor in the Medical Admissions Unit. A patient has presented with suspected <strong>{activeHub.topic}</strong>. In the next 8 minutes: take a focused history, identify critical signs/red flags, and explain your investigative strategy and treatment plan.
+                    </p>
+                  </div>
+
+                  <div className="p-4 bg-white/90 border border-purple-100 rounded-xl space-y-2">
+                    <h4 className="font-bold text-xs text-purple-900">OSCE Examiner Marking Criteria:</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
+                      {[
+                        '1. Professional introduction, patient consent, and structured rapport.',
+                        `2. Accurate elicitation of cardinal symptoms related to ${activeHub.topic}.`,
+                        '3. Recognition of clinical red flags and indications for emergency referral.',
+                        '4. Clear justification of baseline investigations and confirmatory diagnostic tests.',
+                        '5. Empathetic patient communication and clear discharge/management advice.',
+                      ].map((crit, cIdx) => (
+                        <div key={cIdx} className="p-2.5 bg-purple-50/50 rounded-lg border border-purple-100/60 flex items-start gap-2">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-purple-600 flex-shrink-0 mt-0.5" />
+                          <span>{crit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

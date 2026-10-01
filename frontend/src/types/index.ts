@@ -872,7 +872,7 @@ export interface StudyPlanTask {
   scheduledDate?: string;
   subject: string;
   topic: string;
-  taskType: 'READING' | 'MCQ' | 'FLASHCARD' | 'VIVA' | 'REVISION';
+  taskType: 'READING' | 'MCQ' | 'FLASHCARD' | 'VIVA' | 'REVISION' | 'AI_PATIENT' | 'AI_TUTOR' | 'OSCE' | string;
   durationMinutes: number;
   isCompleted: boolean;
   completedAt?: string | null;

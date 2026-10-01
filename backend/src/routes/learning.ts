@@ -889,18 +889,20 @@ router.post(
         }
       } else if (file) {
         const ext = file.originalname.split('.').pop()?.toLowerCase() || 'txt';
+        const cleanUserSubject = (!subject || subject === 'Auto-Detect Subject' || subject === 'General Medicine') ? undefined : subject;
+        const cleanUserTopic = (!topic || topic.trim() === '') ? undefined : topic.trim();
         const transcription = await LearningAIService.transcribeDocument({
           buffer: file.buffer,
           ext,
           mimeType: file.mimetype,
           originalName: file.originalname,
-          userSubject: subject,
-          userTopic: topic,
+          userSubject: cleanUserSubject,
+          userTopic: cleanUserTopic,
         });
 
         extractedText = transcription.text;
-        activeSubject = subject && subject !== 'General Medicine' ? subject : transcription.subject;
-        activeTopic = topic && topic.trim() ? topic.trim() : transcription.topic;
+        activeSubject = cleanUserSubject || transcription.subject || 'Clinical Medicine';
+        activeTopic = cleanUserTopic || transcription.topic || 'Classroom Topic';
 
         // Save StudyMaterial in DB
         materialRecord = await prisma.studyMaterial.create({

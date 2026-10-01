@@ -170,6 +170,21 @@ export class StudyPlanService {
       let actionUrl = '';
 
       switch (t.taskType) {
+        case 'AI_PATIENT':
+          category = 'CLINICAL SIMULATION';
+          title = `Virtual AI Patient: Clinical Case on ${t.topic}`;
+          actionUrl = `/cases?topic=${encodeURIComponent(t.topic)}`;
+          break;
+        case 'AI_TUTOR':
+          category = 'ACADEMIC MENTOR';
+          title = `AI Medical Tutor: Deep-Dive on ${t.topic}`;
+          actionUrl = `/ai-tutor?topic=${encodeURIComponent(t.topic)}&subject=${encodeURIComponent(t.subject)}`;
+          break;
+        case 'OSCE':
+          category = 'CLINICAL EXAM';
+          title = `OSCE Station Drill: ${t.topic}`;
+          actionUrl = `/exams?topic=${encodeURIComponent(t.topic)}`;
+          break;
         case 'FLASHCARD':
           category = 'REVISION';
           title = `${t.topic}: Spaced Repetition Flashcards`;
@@ -185,11 +200,16 @@ export class StudyPlanService {
           title = `${t.topic}: Oral Clinical Viva Practice`;
           actionUrl = `/viva/adaptive?subject=${encodeURIComponent(t.subject)}&topic=${encodeURIComponent(t.topic)}`;
           break;
+        case 'REVISION':
+          category = 'REVISION';
+          title = `${t.topic}: High-Yield Spaced Revision`;
+          actionUrl = `/notes?topic=${encodeURIComponent(t.topic)}`;
+          break;
         case 'READING':
         default:
           category = 'NEW LEARNING';
           title = `${t.subject} — ${t.topic}: Core Mechanism Notes`;
-          actionUrl = '/notes';
+          actionUrl = `/notes?topic=${encodeURIComponent(t.topic)}`;
           break;
       }
 
@@ -307,6 +327,21 @@ export class StudyPlanService {
       let actionUrl = '';
 
       switch (t.taskType) {
+        case 'AI_PATIENT':
+          category = 'CLINICAL SIMULATION';
+          title = `Virtual AI Patient: Clinical Case on ${t.topic}`;
+          actionUrl = `/cases?topic=${encodeURIComponent(t.topic)}`;
+          break;
+        case 'AI_TUTOR':
+          category = 'ACADEMIC MENTOR';
+          title = `AI Medical Tutor: Deep-Dive on ${t.topic}`;
+          actionUrl = `/ai-tutor?topic=${encodeURIComponent(t.topic)}&subject=${encodeURIComponent(t.subject)}`;
+          break;
+        case 'OSCE':
+          category = 'CLINICAL EXAM';
+          title = `OSCE Station Drill: ${t.topic}`;
+          actionUrl = `/exams?topic=${encodeURIComponent(t.topic)}`;
+          break;
         case 'FLASHCARD':
           category = 'REVISION';
           title = `${t.topic}: Spaced Repetition Flashcards`;
@@ -322,11 +357,16 @@ export class StudyPlanService {
           title = `${t.topic}: Oral Clinical Viva Practice`;
           actionUrl = `/viva/adaptive?subject=${encodeURIComponent(t.subject)}&topic=${encodeURIComponent(t.topic)}`;
           break;
+        case 'REVISION':
+          category = 'REVISION';
+          title = `${t.topic}: High-Yield Spaced Revision`;
+          actionUrl = `/notes?topic=${encodeURIComponent(t.topic)}`;
+          break;
         case 'READING':
         default:
           category = 'NEW LEARNING';
           title = `${t.subject} — ${t.topic}: Core Mechanism Notes`;
-          actionUrl = '/notes';
+          actionUrl = `/notes?topic=${encodeURIComponent(t.topic)}`;
           break;
       }
 
@@ -377,8 +417,10 @@ export class StudyPlanService {
       },
     });
 
-    // Day 0 (Today): Immediate Consolidation
+    // Day 0 (Today): Immediate Comprehensive Multimodal Consolidation
     const todayDate = new Date(now);
+
+    // 1. Reading & Lecture Notes
     await prisma.studyPlanTask.create({
       data: {
         planId: plan.id,
@@ -388,11 +430,12 @@ export class StudyPlanService {
         subject,
         topic,
         taskType: 'READING',
-        durationMinutes: 20,
+        durationMinutes: 15,
         isCompleted: false,
       },
     });
 
+    // 2. Active Flashcards
     await prisma.studyPlanTask.create({
       data: {
         planId: plan.id,
@@ -407,6 +450,37 @@ export class StudyPlanService {
       },
     });
 
+    // 3. Virtual AI Patient Simulation
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'AI_PATIENT',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // 4. AI Medical Tutor Mentorship Drill
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'AI_TUTOR',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // 5. Oral Clinical Viva Voce
     await prisma.studyPlanTask.create({
       data: {
         planId: plan.id,
@@ -421,7 +495,37 @@ export class StudyPlanService {
       },
     });
 
-    // Day 1 (Tomorrow): Active Recall Drill
+    // 6. Clinical Practice MCQs
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'MCQ',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // 7. OSCE Clinical Station Drill
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: currentDayName,
+        scheduledDate: todayDate,
+        subject,
+        topic,
+        taskType: 'OSCE',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // Day 1 (Tomorrow): Active Recall & Clinical Differential Drill
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
     const tomorrowDayName = dayNames[tomorrow.getDay()];
@@ -447,13 +551,27 @@ export class StudyPlanService {
         scheduledDate: tomorrow,
         subject,
         topic,
+        taskType: 'AI_PATIENT',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: tomorrowDayName,
+        scheduledDate: tomorrow,
+        subject,
+        topic,
         taskType: 'REVISION',
         durationMinutes: 15,
         isCompleted: false,
       },
     });
 
-    // Day 3: Spaced Repetition Flashcard Drill
+    // Day 3: Spaced Repetition Flashcard Drill & AI Tutor Pitfall Coaching
     const day3 = new Date(now);
     day3.setDate(now.getDate() + 3);
     const day3Name = dayNames[day3.getDay()];
@@ -471,7 +589,21 @@ export class StudyPlanService {
       },
     });
 
-    // Day 7: Weekly Retention Mastery Challenge
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: day3Name,
+        scheduledDate: day3,
+        subject,
+        topic,
+        taskType: 'AI_TUTOR',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    // Day 7: Weekly Retention Mastery Challenge (Viva + OSCE)
     const day7 = new Date(now);
     day7.setDate(now.getDate() + 7);
     const day7Name = dayNames[day7.getDay()];
@@ -483,7 +615,21 @@ export class StudyPlanService {
         scheduledDate: day7,
         subject,
         topic,
-        taskType: 'MCQ',
+        taskType: 'VIVA',
+        durationMinutes: 15,
+        isCompleted: false,
+      },
+    });
+
+    await prisma.studyPlanTask.create({
+      data: {
+        planId: plan.id,
+        userId,
+        dayOfWeek: day7Name,
+        scheduledDate: day7,
+        subject,
+        topic,
+        taskType: 'OSCE',
         durationMinutes: 15,
         isCompleted: false,
       },
