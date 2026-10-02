@@ -105,7 +105,7 @@ app.get('/health', (_req, res) => {
   res.json({
     status: 'ok',
     service: 'techboloy-med-backend',
-    version: '2.4.0-gemini-live-brain',
+    version: '2.4.1-fast-flash-lite',
     aiProvider: hasGemini ? 'gemini' : hasOpenAI ? 'openai' : 'smart-clinical-engine',
     geminiActive: hasGemini,
     timestamp: new Date().toISOString(),
