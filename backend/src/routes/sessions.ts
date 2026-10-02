@@ -7,11 +7,20 @@ import { aiPatientEngine, PatientCaseContext, ConversationTurn } from '../servic
 import speechRecognitionService from '../services/speechRecognitionService';
 import textToSpeechService from '../services/textToSpeechService';
 import { ClinicalEvaluationEngine } from '../services/clinicalEvaluationEngine';
+import { PatientCharacterSystem } from '../services/patientEngine/characterSystem';
 
 const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max for audio
+});
+
+
+// Phase 2: Get all realistic patient characters catalog
+router.get('/characters', (_req, res) => {
+  res.json({
+    characters: PatientCharacterSystem.getAllCharacters(),
+  });
 });
 
 // Start a new practice session (Phase 2 & Phase 3: accepts language, voiceEnabled, avatarEnabled)
@@ -124,7 +133,17 @@ router.post(
         },
       });
 
-      res.status(201).json({ session, openingMessage });
+      const character = PatientCharacterSystem.getCharacterForCase({
+        patientName: patientCase.patientName,
+        patientGender: patientCase.patientGender,
+        patientAge: patientCase.patientAge,
+        chiefComplaint: patientCase.chiefComplaint,
+        title: patientCase.title,
+        avatarGender: patientCase.avatarGender,
+        avatarAgeGroup: patientCase.avatarAgeGroup,
+      });
+
+      res.status(201).json({ session, openingMessage, character });
     } catch (error) {
       console.error('Start session error:', error);
       res.status(500).json({ error: 'Failed to start session' });
@@ -256,13 +275,24 @@ router.post(
 
       const pc = session.patientCase;
 
-      res.json({
-        avatarProvider: session.avatarProvider || pc.avatarProvider || 'webgl-3d',
-        avatarId: session.avatarId || pc.avatarId || 'default-patient',
-        avatarGender: pc.avatarGender || (pc.patientGender.toLowerCase().includes('female') ? 'female' : 'male'),
-        avatarAgeGroup: pc.avatarAgeGroup || (pc.patientAge < 30 ? 'young-adult' : pc.patientAge < 60 ? 'middle-aged' : 'elderly'),
-        avatarStyle: pc.avatarStyle || 'realistic',
+      const character = PatientCharacterSystem.getCharacterForCase({
         patientName: pc.patientName,
+        patientGender: pc.patientGender,
+        patientAge: pc.patientAge,
+        chiefComplaint: pc.chiefComplaint,
+        title: pc.title,
+        avatarGender: pc.avatarGender,
+        avatarAgeGroup: pc.avatarAgeGroup,
+      });
+
+      res.json({
+        avatarProvider: 'realistic-human',
+        avatarId: character.characterId,
+        avatarGender: character.sex,
+        avatarAgeGroup: character.age < 30 ? 'young-adult' : character.age < 60 ? 'middle-aged' : 'elderly',
+        avatarStyle: 'realistic',
+        patientName: pc.patientName,
+        character,
         status: 'ready',
       });
     } catch (error) {

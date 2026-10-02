@@ -39,7 +39,7 @@ export interface RegisterCredentials {
 // ────────────────────────────────────────────────────────────────────────────
 
 export type CaseDifficulty = 'beginner' | 'intermediate' | 'advanced';
-export type PatientPersonality = 'calm' | 'anxious' | 'talkative' | 'quiet' | 'confused' | 'frustrated';
+export type PatientPersonality = 'calm' | 'anxious' | 'talkative' | 'quiet' | 'confused' | 'frustrated' | 'concerned' | 'stoic' | 'cooperative';
 
 export interface PatientCase {
   id: string;
@@ -101,6 +101,10 @@ export type AvatarState =
   | 'listening'
   | 'thinking'
   | 'speaking'
+  | 'confused'
+  | 'concerned'
+  | 'anxious'
+  | 'relieved'
   | 'paused'
   | 'error';
 
@@ -974,3 +978,5 @@ export interface SpacedRepetitionSettings {
   reminderEnabled: boolean;
   preferredReminderTime: string;
 }
+
+export * from './character';

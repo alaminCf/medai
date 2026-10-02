@@ -4,6 +4,8 @@ import { sessionsService } from '../services/sessionsService';
 import speechRecognitionService from '../services/speechRecognitionService';
 import textToSpeechService from '../services/textToSpeechService';
 import PatientAvatarCanvas from '../components/avatar/PatientAvatarCanvas';
+import avatarEventBus from '../services/avatarEventBus';
+import { PatientEmotionEngine } from '../services/patientEmotionEngine';
 import type {
   PracticeSession,
   ConversationMessage,
@@ -218,6 +220,12 @@ export default function PracticeSessionPage() {
 
       setActiveSpeakingText(text);
 
+      avatarEventBus.emit('patientResponseGenerated', {
+        text,
+        emotion: currentEmotion,
+        timestamp: Date.now(),
+      });
+
       await textToSpeechService.play(text, {
         sessionId: activeSession?.id,
         language: (language || activeSession?.language || 'en') as ConsultationLanguage,
@@ -233,11 +241,16 @@ export default function PracticeSessionPage() {
           onAudioPlaying: () => {
             setVoiceState('speaking');
             setAvatarState('speaking');
+            avatarEventBus.emit('patientAudioStarted', {
+              audioElement: textToSpeechService.getCurrentAudio(),
+              timestamp: Date.now(),
+            });
           },
           onAudioFinished: () => {
             setVoiceState('idle');
             setAvatarState('idle');
             setActiveSpeakingText('');
+            avatarEventBus.emit('patientAudioFinished', { timestamp: Date.now() });
           },
         },
       });
@@ -247,6 +260,7 @@ export default function PracticeSessionPage() {
 
   // Stop current patient voice & reset avatar to idle
   const handleStopAudio = () => {
+    avatarEventBus.interruptPatient(textToSpeechService.getCurrentAudio());
     textToSpeechService.stop();
     setVoiceState('idle');
     setAvatarState('idle');
@@ -286,12 +300,14 @@ export default function PracticeSessionPage() {
     if (!session || isSending) return;
 
     // Interruption handling: Stop patient speech immediately
-    handleStopAudio();
+    avatarEventBus.interruptPatient(textToSpeechService.getCurrentAudio());
+    textToSpeechService.stop();
 
     setError('');
     setInterimTranscript('');
     setVoiceState('listening');
     setAvatarState('listening');
+    avatarEventBus.emit('patientListeningStarted', { timestamp: Date.now() });
 
     const lang = session.language || 'en';
 
@@ -346,9 +362,31 @@ export default function PracticeSessionPage() {
   const handleSendVoiceMessage = async (recognizedText: string) => {
     if (!sessionId || !session || !recognizedText.trim() || isSending) return;
 
+    avatarEventBus.interruptPatient(textToSpeechService.getCurrentAudio());
+
+    // Contextual patient emotion derived from doctor inquiry
+    const emotionAnalysis = PatientEmotionEngine.evaluateEmotion(
+      recognizedText,
+      currentEmotion,
+      session.patientCase?.personality || 'concerned',
+      session.patientCase,
+      messages.length
+    );
+    if (emotionAnalysis.emotion) {
+      setCurrentEmotion(emotionAnalysis.emotion);
+      setEmotionIntensity(emotionAnalysis.intensity);
+      avatarEventBus.emit('patientEmotionChanged', {
+        emotion: emotionAnalysis.emotion,
+        intensity: emotionAnalysis.intensity,
+        reason: emotionAnalysis.reason,
+        timestamp: Date.now(),
+      });
+    }
+
     setIsSending(true);
     setVoiceState('thinking');
     setAvatarState('thinking');
+    avatarEventBus.emit('patientThinkingStarted', { timestamp: Date.now() });
     setError('');
 
     try {
@@ -394,9 +432,31 @@ export default function PracticeSessionPage() {
     setIsSending(true);
     setError('');
 
+    avatarEventBus.interruptPatient(textToSpeechService.getCurrentAudio());
     handleStopAudio();
+
+    // Contextual patient emotion derived from doctor inquiry
+    const emotionAnalysis = PatientEmotionEngine.evaluateEmotion(
+      messageText,
+      currentEmotion,
+      session?.patientCase?.personality || 'concerned',
+      session?.patientCase,
+      messages.length
+    );
+    if (emotionAnalysis.emotion) {
+      setCurrentEmotion(emotionAnalysis.emotion);
+      setEmotionIntensity(emotionAnalysis.intensity);
+      avatarEventBus.emit('patientEmotionChanged', {
+        emotion: emotionAnalysis.emotion,
+        intensity: emotionAnalysis.intensity,
+        reason: emotionAnalysis.reason,
+        timestamp: Date.now(),
+      });
+    }
+
     setVoiceState('thinking');
     setAvatarState('thinking');
+    avatarEventBus.emit('patientThinkingStarted', { timestamp: Date.now() });
 
     try {
       const response = await sessionsService.sendMessage(sessionId, {
