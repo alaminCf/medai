@@ -421,7 +421,9 @@ export const learningService = {
     subject?: string;
     topic?: string;
     difficulty?: string;
-  }): Promise<{ sessionId: string; subject: string; topic: string; currentQuestion: any }> {
+    sessionType?: 'PRACTICE' | 'EXAM';
+    examinerStyle?: string;
+  }): Promise<{ sessionId: string; subject: string; topic: string; currentQuestion: any; sessionState?: any }> {
     const res = await api.post('/adaptive/viva/start', params);
     return res.data;
   },
@@ -437,8 +439,15 @@ export const learningService = {
     isSessionComplete: boolean;
     nextQuestion?: any;
     turnCount: number;
+    sessionState?: any;
+    debugTurn?: any;
   }> {
     const res = await api.post('/adaptive/viva/submit', params);
+    return res.data;
+  },
+
+  async getAdaptiveVivaSession(sessionId: string): Promise<{ success: boolean; session: any }> {
+    const res = await api.get('/adaptive/viva/session/' + sessionId);
     return res.data;
   },
 

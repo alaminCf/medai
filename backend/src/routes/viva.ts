@@ -1,3 +1,4 @@
+import { VivaBlueprintService } from '../services/viva/vivaBlueprintService';
 import { Router, Response } from 'express';
 import prisma from '../utils/prisma';
 import { authenticate, AuthRequest } from '../middleware/auth';
@@ -41,13 +42,37 @@ router.post('/start', async (req: AuthRequest, res: Response): Promise<void> => 
       if (mat?.extractedText) materialText = mat.extractedText;
     }
 
-    const generated = await LearningAIService.generateVivaQuestions({
-      subject: subject || 'Physiology',
-      topic: topic || 'Cardiovascular System',
-      count,
-      difficulty,
-      materialText: materialText || undefined,
-    });
+    const activeSubject = subject || 'Physiology';
+    const activeTopic = topic || 'Cardiovascular System';
+    const blueprint = await VivaBlueprintService.getBlueprintForTopic(activeSubject, activeTopic);
+
+    // Map concepts into unique non-repeating viva questions
+    const generated: Array<{ question: string; expectedConcepts: string[]; sourceReference?: string }> = [];
+    const questionTypes = ['Definition', 'Mechanism', 'Regulation', 'Clinical Application', 'Compare & Contrast'];
+
+    for (let i = 0; i < count; i++) {
+      const concept = blueprint.concepts[i % blueprint.concepts.length];
+      const qType = questionTypes[i % questionTypes.length];
+      let qText = '';
+
+      if (i === 0) {
+        qText = `To begin our viva on ${blueprint.topic}, can you explain the core definition and physiological basis of ${concept.name}?`;
+      } else if (qType === 'Mechanism') {
+        qText = `Moving deeper into ${concept.name}: what is the exact cellular or biomechanical mechanism driving it?`;
+      } else if (qType === 'Regulation') {
+        qText = `What neurohumoral, autonomic, or compensatory factors regulate ${concept.name}?`;
+      } else if (qType === 'Clinical Application' && blueprint.clinicalScenarios.length > 0) {
+        qText = `${blueprint.clinicalScenarios[0].scenario} How would you apply your understanding of ${concept.name} here?`;
+      } else {
+        qText = `In clinical practice, how do you distinguish ${concept.name} from related differential conditions?`;
+      }
+
+      generated.push({
+        question: qText,
+        expectedConcepts: concept.expectedConcepts,
+        sourceReference: `Curriculum: ${concept.name} (${concept.tier})`
+      });
+    }
 
     const session = await prisma.vivaSession.create({
       data: {

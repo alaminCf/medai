@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Send,
   GraduationCap,
+  Sparkles,
 } from 'lucide-react';
 import learningService from '../../services/learningService';
 import type { VivaSession, MedicalSubject } from '../../types';
@@ -173,6 +174,32 @@ export default function VivaPracticePage() {
           </p>
         </div>
       </div>
+
+      {/* Dynamic Adaptive Viva Simulation Callout */}
+      {!session && (
+        <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-gradient-to-r from-teal-500/10 via-indigo-500/10 to-teal-500/10 border border-teal-200/80 flex items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold flex-shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                <span>Adaptive Oral Viva Simulation</span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">RECOMMENDED</span>
+              </div>
+              <div className="text-[11px] text-slate-600 truncate">
+                Real examiner experience, multi-turn follow-ups, and zero repetitive questions.
+              </div>
+            </div>
+          </div>
+          <Link
+            to="/viva/adaptive"
+            className="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow transition whitespace-nowrap flex items-center gap-1.5 flex-shrink-0"
+          >
+            Launch Adaptive <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+      )}
 
       {/* Main Content Area */}
       {!session ? (

@@ -323,9 +323,9 @@ router.get('/recommendations', authenticate, async (req: AuthRequest, res: Respo
 router.post('/viva/start', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user!.id;
-    const { subject = 'Physiology', topic = 'Cardiovascular System', difficulty = 'medium' } = req.body;
+    const { subject = 'Physiology', topic = 'Cardiovascular System', difficulty = 'medium', sessionType = 'PRACTICE', examinerStyle = 'CALM_PROFESSIONAL' } = req.body;
 
-    const session = await adaptiveVivaService.startAdaptiveSession(userId, subject, topic, difficulty);
+    const session = await adaptiveVivaService.startAdaptiveSession(userId, subject, topic, difficulty, sessionType, examinerStyle);
 
     await learningAnalyticsService.logEvent(userId, 'VIVA_STARTED', {
       sessionId: session.sessionId,
@@ -370,9 +370,32 @@ router.post('/viva/submit', authenticate, async (req: AuthRequest, res: Response
   }
 });
 
+/**
+ * GET /api/adaptive/viva/session/:sessionId
+ * Recover active viva session state on refresh or reconnection
+ */
+router.get('/viva/session/:sessionId', authenticate, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user!.id;
+    const { sessionId } = req.params;
+
+    const state = await adaptiveVivaService.getSessionState(sessionId, userId);
+    if (!state) {
+      res.status(404).json({ error: 'Viva session not found' });
+      return;
+    }
+
+    res.json({ sessionState: state });
+  } catch (error) {
+    console.error('Error fetching viva session state:', error);
+    res.status(500).json({ error: 'Failed to fetch session state' });
+  }
+});
+
 // ==========================================
 // 7. LEARNING STREAK & ADVANCED ANALYTICS
 // ==========================================
+
 
 /**
  * GET /api/adaptive/analytics/streak

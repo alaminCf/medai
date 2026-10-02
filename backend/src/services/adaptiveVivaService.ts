@@ -1,13 +1,17 @@
-import prisma from '../utils/prisma';
-import { LearningAIService } from './learningAIService';
+import { AdaptiveVivaEngine } from './viva/adaptiveVivaEngine';
+import { ExaminerStyle, VivaSessionType } from './viva/vivaTypes';
 
 export interface AdaptiveVivaQuestionState {
   questionId: string;
+  id?: string;
   questionNumber: number;
   question: string;
+  questionText?: string;
+  questionType?: string;
   topic: string;
   difficulty: string;
-  focusConcept?: string;
+  focusConcept: string;
+  targetConcept?: string;
 }
 
 export interface VivaTurnEvaluation {
@@ -16,65 +20,65 @@ export interface VivaTurnEvaluation {
   conceptsMissed: string[];
   incorrectConcepts: string[];
   feedback: string;
+  examinerFeedback?: string;
   clinicalCommunicationClarity: 'Clear' | 'Adequate' | 'Hesitant' | 'Disorganized';
   suggestedNextDifficulty: 'Basic' | 'Moderate' | 'Advanced';
-  nextFocusConcept?: string;
+  nextFocusConcept: string;
   score: number;
+  strategyChosen?: string;
 }
 
 export class AdaptiveVivaService {
   /**
-   * Start an adaptive viva session. Initial question starts at Basic or Moderate.
-   * Expected concepts and internal rubric are strictly hidden on the server until the student responds.
+   * Initializes stateful concept-driven Adaptive Viva session using the master engine
    */
-  async startAdaptiveSession(userId: string, subject: string, topic: string, difficulty = 'medium') {
-    const session = await prisma.vivaSession.create({
-      data: {
-        userId,
-        subject,
-        topic,
-        difficulty,
-        mode: 'TEXT',
-        status: 'in_progress',
-        totalQuestions: 5,
-        currentQuestionIndex: 0,
-      },
+  async startAdaptiveSession(
+    userId: string,
+    subject: string,
+    topic: string,
+    difficulty = 'medium',
+    sessionType: VivaSessionType = 'PRACTICE',
+    examinerStyle: ExaminerStyle = 'CALM_PROFESSIONAL'
+  ) {
+    const { session, blueprint } = await AdaptiveVivaEngine.startSession({
+      userId,
+      subject,
+      topic,
+      difficulty,
+      sessionType,
+      examinerStyle,
+      totalTargetQuestions: 5
     });
 
-    // Create the first question
-    const firstQText = `In the context of ${topic}, can you explain the primary physiological mechanisms and define its core anatomical or functional boundaries?`;
-    const firstExpectedConcepts = ['Core Definition', 'Primary Mechanism', 'Hemodynamic Function'];
-
-    const question = await prisma.vivaQuestion.create({
-      data: {
-        sessionId: session.id,
-        questionNumber: 1,
-        question: firstQText,
-        expectedConcepts: JSON.stringify(firstExpectedConcepts),
-        sourceReference: `${subject} Curriculum Core: ${topic}`,
-      },
-    });
+    const currentQ = session.currentQuestion;
 
     const currentQuestion: AdaptiveVivaQuestionState = {
-      questionId: question.id,
-      questionNumber: 1,
-      question: firstQText,
-      topic,
-      difficulty: 'Basic',
-      focusConcept: 'Core Mechanism',
+      questionId: currentQ.id,
+      id: currentQ.id,
+      questionNumber: currentQ.questionNumber,
+      question: currentQ.questionText,
+      questionText: currentQ.questionText,
+      questionType: currentQ.questionType,
+      topic: session.topic,
+      difficulty: currentQ.difficulty,
+      focusConcept: currentQ.targetConcept,
+      targetConcept: currentQ.targetConcept
     };
 
     return {
-      sessionId: session.id,
-      subject,
-      topic,
+      sessionId: session.sessionId,
+      subject: session.subject,
+      topic: session.topic,
+      sessionType: session.sessionType,
+      examinerStyle: session.examinerStyle,
       currentQuestion,
+      sessionState: session,
+      blueprint
     };
   }
 
   /**
-   * Evaluates the student's oral answer, analyzes concept coverage, and dynamically generates
-   * the appropriate follow-up question (probing missed concepts or advancing difficulty).
+   * Evaluates oral answer, updates knowledge state, and dynamically selects next question
    */
   async submitAnswerAndGetNext(
     userId: string,
@@ -84,186 +88,56 @@ export class AdaptiveVivaService {
     topic: string,
     currentDifficulty: 'Basic' | 'Moderate' | 'Advanced'
   ) {
-    const session = await prisma.vivaSession.findFirst({
-      where: { id: sessionId, userId },
-      include: {
-        questions: {
-          include: { response: true },
-          orderBy: { questionNumber: 'asc' },
-        },
-      },
+    const result = await AdaptiveVivaEngine.submitAnswer({
+      userId,
+      sessionId,
+      questionId,
+      studentAnswer
     });
 
-    if (!session) {
-      throw new Error('Viva session not found or unauthorized');
-    }
-
-    const currentQ = session.questions.find((q: any) => q.id === questionId);
-    const questionText = currentQ ? currentQ.question : `Question on ${topic}`;
-    const expectedConcepts: string[] = currentQ ? JSON.parse(currentQ.expectedConcepts || '[]') : ['Core Mechanism', 'Physiology'];
-
-    // Evaluate answer with AI via LearningAIService
-    const evalResult = await LearningAIService.evaluateVivaResponse({
-      question: questionText,
-      expectedConcepts,
-      studentResponse: studentAnswer,
-    });
-
-    const covered = evalResult.keyConceptsCovered || [];
-    const missed = evalResult.conceptsMissed || [];
-    const incorrect = evalResult.conceptsIncorrect || [];
-    const scoreOutOf100 = Math.round((evalResult.score / 10) * 100);
-
-    const clarityScore = evalResult.clarityScore || 8;
-    const clinicalCommunicationClarity: 'Clear' | 'Adequate' | 'Hesitant' | 'Disorganized' =
-      clarityScore >= 8 ? 'Clear' : (clarityScore >= 6 ? 'Adequate' : 'Hesitant');
-
-    let suggestedNextDifficulty: 'Basic' | 'Moderate' | 'Advanced' = currentDifficulty;
-    if (scoreOutOf100 >= 80) {
-      suggestedNextDifficulty = currentDifficulty === 'Basic' ? 'Moderate' : 'Advanced';
-    } else if (scoreOutOf100 < 50) {
-      suggestedNextDifficulty = currentDifficulty === 'Advanced' ? 'Moderate' : 'Basic';
-    }
-
-    const nextFocusConcept = missed.length > 0 ? missed[0] : (covered.length > 0 ? `${covered[0]} Regulation` : 'Clinical Application');
+    const nextQ = result.nextQuestion;
+    const nextQuestionState: AdaptiveVivaQuestionState | null = nextQ
+      ? {
+          questionId: nextQ.id,
+          id: nextQ.id,
+          questionNumber: nextQ.questionNumber,
+          question: nextQ.questionText,
+          questionText: nextQ.questionText,
+          questionType: nextQ.questionType,
+          topic,
+          difficulty: nextQ.difficulty,
+          focusConcept: nextQ.targetConcept,
+          targetConcept: nextQ.targetConcept
+        }
+      : null;
 
     const evaluation: VivaTurnEvaluation = {
-      conceptsExpected: expectedConcepts,
-      conceptsMentioned: covered,
-      conceptsMissed: missed,
-      incorrectConcepts: incorrect,
-      feedback: evalResult.feedback,
-      clinicalCommunicationClarity,
-      suggestedNextDifficulty,
-      nextFocusConcept,
-      score: scoreOutOf100,
+      conceptsExpected: result.assessment.demonstratedConcepts.concat(result.assessment.missingConcepts),
+      conceptsMentioned: result.assessment.demonstratedConcepts,
+      conceptsMissed: result.assessment.missingConcepts,
+      incorrectConcepts: result.assessment.detectedMisconceptions,
+      feedback: `${result.examinerFeedback} ${result.assessment.examinerRemark}`,
+      examinerFeedback: result.examinerFeedback,
+      clinicalCommunicationClarity: result.assessment.communicationClarity,
+      suggestedNextDifficulty:
+        result.assessment.scoreOutOf10 >= 8 ? 'Advanced' : (result.assessment.scoreOutOf10 >= 5 ? 'Moderate' : 'Basic'),
+      nextFocusConcept: result.sessionState.currentConcept,
+      score: Math.round(result.assessment.scoreOutOf10 * 10),
+      strategyChosen: result.assessment.recommendedNextAction
     };
-
-    // Save VivaResponse
-    if (currentQ) {
-      await prisma.vivaResponse.create({
-        data: {
-          questionId: currentQ.id,
-          responseText: studentAnswer,
-          score: evaluation.score,
-          keyConceptsCovered: JSON.stringify(covered),
-          conceptsMissed: JSON.stringify(missed),
-          conceptsIncorrect: JSON.stringify(incorrect),
-          clarityScore: evalResult.clarityScore,
-          feedback: evalResult.feedback,
-        },
-      });
-    }
-
-    // Persist concept performance records
-    for (const concept of evaluation.conceptsExpected) {
-      const isMentioned = covered.includes(concept);
-      const isMissed = missed.includes(concept);
-      const isIncorrect = incorrect.includes(concept);
-
-      let status = 'COVERED';
-      if (isIncorrect) status = 'INCORRECT';
-      else if (isMissed) status = 'MISSED';
-      else if (!isMentioned) status = 'PARTIALLY_COVERED';
-
-      await prisma.vivaConceptPerformance.create({
-        data: {
-          userId,
-          vivaSessionId: sessionId,
-          conceptName: concept,
-          status,
-          feedback: evaluation.feedback,
-        },
-      });
-    }
-
-    const completedTurnCount = session.questions.filter((q: any) => q.response !== null).length + 1;
-    const isSessionComplete = completedTurnCount >= session.totalQuestions;
-
-    let nextQuestion: AdaptiveVivaQuestionState | null = null;
-
-    if (!isSessionComplete) {
-      const nextQNum = completedTurnCount + 1;
-      let nextQText = `Continuing with ${topic}, could you explain how ${nextFocusConcept} operates under acute physiological stress?`;
-      let nextExpected = [nextFocusConcept, 'Compensatory Mechanisms'];
-
-      try {
-        const generated = await LearningAIService.generateVivaQuestions({
-          subject: session.subject,
-          topic: `${topic} - ${nextFocusConcept}`,
-          count: 1,
-          difficulty: suggestedNextDifficulty.toLowerCase(),
-        });
-        if (generated.length > 0) {
-          nextQText = generated[0].question;
-          nextExpected = generated[0].expectedConcepts;
-        }
-      } catch {
-        // Fallback to contextual question text
-      }
-
-      const createdQ = await prisma.vivaQuestion.create({
-        data: {
-          sessionId,
-          questionNumber: nextQNum,
-          question: nextQText,
-          expectedConcepts: JSON.stringify(nextExpected),
-          sourceReference: `${session.subject} Curriculum Core: ${topic}`,
-        },
-      });
-
-      nextQuestion = {
-        questionId: createdQ.id,
-        questionNumber: nextQNum,
-        question: nextQText,
-        topic,
-        difficulty: suggestedNextDifficulty,
-        focusConcept: nextFocusConcept,
-      };
-
-      await prisma.vivaSession.update({
-        where: { id: sessionId },
-        data: {
-          currentQuestionIndex: completedTurnCount,
-        },
-      });
-    } else {
-      const allResponses = await prisma.vivaResponse.findMany({
-        where: {
-          question: { sessionId },
-        },
-      });
-      const avgScore = allResponses.length > 0
-        ? Math.round(allResponses.reduce((sum: number, r: any) => sum + r.score, 0) / allResponses.length)
-        : evaluation.score;
-
-      await prisma.vivaSession.update({
-        where: { id: sessionId },
-        data: {
-          status: 'completed',
-          overallScore: avgScore,
-          completedAt: new Date(),
-        },
-      });
-
-      await prisma.learningEvent.create({
-        data: {
-          userId,
-          eventType: 'VIVA_COMPLETED',
-          entityId: sessionId,
-          subject: session.subject,
-          topic: session.topic,
-          metadata: JSON.stringify({ overallScore: avgScore, questionsCount: completedTurnCount }),
-        },
-      });
-    }
 
     return {
       evaluation,
-      isSessionComplete,
-      nextQuestion,
-      turnCount: completedTurnCount,
+      isSessionComplete: result.isCompleted,
+      nextQuestion: nextQuestionState,
+      turnCount: result.turnNumber,
+      sessionState: result.sessionState,
+      endOfVivaReport: result.endOfVivaReport
     };
+  }
+
+  async getSessionState(sessionId: string, userId: string) {
+    return AdaptiveVivaEngine.getSessionState(sessionId, userId);
   }
 }
 
