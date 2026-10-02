@@ -91,11 +91,15 @@ STRICT PATIENT ROLEPLAY RULES:
       return null;
     }
 
-    const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
+    const models = [
+      'gemini-3.5-flash-lite',
+      'gemini-3.1-flash-lite-preview',
+      'gemini-flash-lite-latest',
+    ];
     for (const model of models) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6500);
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
 
       try {
         const res = await fetch(url, {
@@ -113,8 +117,8 @@ STRICT PATIENT ROLEPLAY RULES:
               },
             ],
             generationConfig: {
-              temperature: 0.3,
-              maxOutputTokens: 180,
+              temperature: 0.2,
+              maxOutputTokens: 90,
             },
           }),
           signal: controller.signal,
@@ -192,6 +196,52 @@ STRICT PATIENT ROLEPLAY RULES:
       .replace(/বামপাশে/g, 'বাম পাশে')
       .replace(/মাঝামাঝি/g, 'মাঝখানে');
 
+    // 0a. Patient Demographics (Age)
+    if (norm.includes('বয়স') || norm.includes('বয়েস') || norm.includes('age') || norm.includes('how old') || norm.includes('boyos')) {
+      const enToBnDigits = (n: number | string) =>
+        String(n).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'.charAt(parseInt(d, 10)));
+      return isBn ? `আমার বয়স ${enToBnDigits(caseContext.patientAge)} বছর, ডাক্তার।` : `I am ${caseContext.patientAge} years old, doctor.`;
+    }
+
+    // 0b. Patient Demographics (Name)
+    if (norm.includes('নাম') || norm.includes('name')) {
+      return isBn ? `আমার নাম ${caseContext.patientName}।` : `My name is ${caseContext.patientName}.`;
+    }
+
+    // 0c. Hand, Leg, Bone, Joint, Muscle Pain (Dengue Breakbone / Myalgia)
+    if (
+      norm.includes('হাত পা') ||
+      norm.includes('হাত-পা') ||
+      norm.includes('গা হাত পা') ||
+      norm.includes('শরীরে ব্যথা') ||
+      norm.includes('শরীর ব্যথা') ||
+      norm.includes('হাড়ে') ||
+      norm.includes('হাড়ভাঙা') ||
+      norm.includes('মাংসপেশি') ||
+      norm.includes('গায়ে ব্যথা') ||
+      norm.includes('পায়ে ব্যথা') ||
+      norm.includes('হাতে ব্যথা') ||
+      norm.includes('body ache') ||
+      norm.includes('joint pain') ||
+      norm.includes('bone pain') ||
+      norm.includes('muscle pain') ||
+      norm.includes('breakbone') ||
+      norm.includes('limb pain')
+    ) {
+      if (isBn) {
+        if (
+          caseContext.chiefComplaint.toLowerCase().includes('dengue') ||
+          (truth.hpi.characterBn && (truth.hpi.characterBn.includes('কামড়ানো') || truth.hpi.characterBn.includes('ভাঙার মতো') || truth.hpi.characterBn.includes('মাংসপেশি')))
+        ) {
+          return 'জি ডাক্তার সাহেব, হাত-পা ও সারা শরীরের হাড়ে তীব্র কামড়ানো অসহ্য যন্ত্রণা হচ্ছে, যেন হাড় ভেঙে যাচ্ছে। ব্যথায় একটুও নড়াচড়া করতে পারছি না।';
+        }
+        return `না ডাক্তার সাহেব, হাত-পায়ে নির্দিষ্ট কোনো ব্যথা নেই, আমার সমস্যাটা মূলত ${truth.hpi.locationBn || caseContext.chiefComplaint} নিয়ে।`;
+      }
+      return caseContext.chiefComplaint.toLowerCase().includes('dengue')
+        ? 'Yes doctor, I have excruciating deep bone and muscle pain in my arms and legs, feeling like my bones are literally breaking.'
+        : `No doctor, my arms and legs do not ache; my primary issue is ${truth.hpi.location}.`;
+    }
+
     // 1. Location / Anatomical Site (Headache, chest, abdomen, etc.)
     if (
       norm.includes('কোথায়') ||
@@ -215,6 +265,12 @@ STRICT PATIENT ROLEPLAY RULES:
     ) {
       if (isBn) {
         if (norm.includes('উপর') || norm.includes('পেছন') || norm.includes('সামনে') || norm.includes('মাঝ')) {
+          if (
+            caseContext.chiefComplaint.toLowerCase().includes('dengue') ||
+            (truth.hpi.locationBn && truth.hpi.locationBn.includes('চোখের পেছনে'))
+          ) {
+            return 'ডাক্তার সাহেব, মাথার নির্দিষ্ট সামনে বা পেছনের চেয়ে আমার মূলত দুই চোখের পেছনের দিকে তীব্র চাপ ও ব্যথা অনুভূত হচ্ছে, আর সারা শরীরের হাড়ে অসহ্য যন্ত্রণা।';
+          }
           return `না ডাক্তার সাহেব, মাথার উপরে বা পেছনের দিকে নয়, মূলত আমার মাথার ডান পাশে কানের ওপরের দিকে আর রগের কাছে বেশি ব্যথাটা দপদপ করছে।`;
         }
         return truth.hpi.locationBn || truth.hpi.location;

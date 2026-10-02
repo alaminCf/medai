@@ -182,10 +182,20 @@ export class TruthLayerBuilder {
     }
 
     // 3. Location
+    const lowerCombined = (sym + ' ' + cc).toLowerCase();
     let locationEn = 'In the affected area.';
     let locationBn = 'কষ্টের জায়গায় অনুভূত হচ্ছে।';
-    if (combinedText.includes('চোখের পেছনে') || combinedText.includes('সারা শরীরে') || combinedText.includes('behind my eyes') || combinedText.includes('body ache')) {
-      locationEn = 'Intense pain all over my body, particularly severe aching behind my eyes.';
+    if (
+      lowerCombined.includes('চোখের পেছনে') ||
+      lowerCombined.includes('সারা শরীরে') ||
+      lowerCombined.includes('behind my eyes') ||
+      lowerCombined.includes('body ache') ||
+      lowerCombined.includes('dengue') ||
+      lowerCombined.includes('myalgia') ||
+      lowerCombined.includes('bone ache') ||
+      lowerCombined.includes('joint pain')
+    ) {
+      locationEn = 'Intense pain all over my body, particularly severe aching behind my eyes and deep in my bones.';
       locationBn = 'সারা শরীরে তীব্র ব্যথা এবং বিশেষ করে দুই চোখের পেছনের দিকে অসহ্য যন্ত্রণা হচ্ছে।';
     } else
     if (sym.includes('central chest') || sym.includes('center of my chest') || sym.includes('retrosternal') || cc.toLowerCase().includes('chest')) {
@@ -209,7 +219,16 @@ export class TruthLayerBuilder {
     // 4. Character
     let characterEn = 'It feels uncomfortable and heavy.';
     let characterBn = 'এটা বেশ অস্বস্তিকর এবং ভারী অনুভূতি।';
-    if (combinedText.includes('অসহ্য যন্ত্রণা') || combinedText.includes('যন্ত্রণা') || combinedText.includes('breakbone')) {
+    if (
+      lowerCombined.includes('অসহ্য যন্ত্রণা') ||
+      lowerCombined.includes('যন্ত্রণা') ||
+      lowerCombined.includes('breakbone') ||
+      lowerCombined.includes('dengue') ||
+      lowerCombined.includes('body ache') ||
+      lowerCombined.includes('myalgia') ||
+      lowerCombined.includes('bone ache') ||
+      lowerCombined.includes('arthralgia')
+    ) {
       characterEn = 'Severe agonizing pain deep in my muscles and joints, as if my bones are breaking.';
       characterBn = 'সারা শরীরের মাংসপেশি ও হাড়ে তীব্র কামড়ানো অসহ্য যন্ত্রণা, যেন ভেঙে পড়ার মতো কষ্ট।';
     } else

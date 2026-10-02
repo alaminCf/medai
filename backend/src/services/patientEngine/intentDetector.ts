@@ -209,6 +209,8 @@ const INTENT_RULES: IntentRule[] = [
       /(?:মাথার\s*(?:উপরে|উপরের|পেছনে|পেছনের|সামনে|সামনের|মাঝামাঝি|মাঝখানে|ডান|বাম|একপাশে|দুপাশে|রগে|কপালে|পাশে))/i,
       /(?:সামনের\s*দিকে\s*(?:নাকি|বা)\s*পেছনের\s*দিকে|উপরে\s*(?:নাকি|বা)\s*পেছনে|ডান\s*(?:পাশে|দিকে)\s*নাকি\s*বাম|কোন\s*দিকে\s*(?:বেশি|কম)?\s*ব্যথা)/i,
       /(?:মাথার\s*(?:কোন|কোনো)\s*অংশে|ব্যাখ্যা\s*কর|বলতো|দেখান).*(?:ব্যথা|কষ্ট)/i,
+      /(?:হাত\s*পা|হাত-পা|গা\s*হাত\s*পা|শরীরে|হাড়ে|মাংসপেশিতে|পায়ে|হাতে)\s*(?:কি\s*)?(?:ব্যথা|কষ্ট|যন্ত্রণা|বেদনা)/i,
+      /(?:hat\s*pa|haat\s*pa|body\s*ache|joint\s*pain|bone\s*pain|muscle\s*pain|limb\s*pain)/i,
       /(kothay\s*batha|kothay\s*betha|kothay\s*kosto|kon\s*jaygay|^kothay\??$|\bkothay\b|mathar\s*upore|mathar\s*pechone|mathar\s*samne|samne\s*naki\s*pechone)/i,
     ],
   },
