@@ -1,4 +1,4 @@
-import { ClinicalFact, ClinicalIntent, LanguageMode, PatientConversationState, PatientPersonality } from './types';
+import { ClinicalFact, ClinicalIntent, LanguageMode, PatientPersonality } from './types';
 
 export class PatientDisclosureRules {
   /**
@@ -14,6 +14,9 @@ export class PatientDisclosureRules {
     const count = fact.disclosureCount;
 
     if (isBn) {
+      if (fact.category === 'AGE') {
+        return `জি ডাক্তার সাহেব, আগেই বলেছি আমার বয়স ${fact.valueBn.replace(/[^০-৯0-9]/g, '') || ''} বছর।`;
+      }
       if (count === 1) {
         return `যেমনটা আগেই বলেছিলাম ডাক্তার সাহেব, ${fact.valueBn}`;
       } else {
@@ -28,6 +31,9 @@ export class PatientDisclosureRules {
     }
 
     // English
+    if (fact.category === 'AGE') {
+      return `As I mentioned earlier, doctor, ${fact.valueEn}`;
+    }
     if (count === 1) {
       if (personality === 'anxious') {
         return `As I mentioned earlier, doctor, ${fact.valueEn.toLowerCase()} I'm still really worried about it.`;
@@ -58,7 +64,25 @@ export class PatientDisclosureRules {
       return 'Doctor, apni thik ki jante chacchen? Kosto ta kemon, naki kobe shuru hoyeche?';
     }
 
-    return "Do you mean how the pain feels, or where it's located, doctor?";
+    return "Do you mean how the symptom feels, or where it's located, doctor?";
+  }
+
+  /**
+   * Generates polite boundary response when student asks an unrelated non-medical question.
+   */
+  public static handleUnrelatedQuery(
+    language: LanguageMode
+  ): string {
+    const isBn = language === 'bn';
+    const isBanglish = language === 'banglish';
+
+    if (isBn) {
+      return 'ডাক্তার সাহেব, আমি তো অসুস্থ হয়ে আপনার কাছে চিকিৎসার জন্য এসেছি। এই প্রশ্নের সাথে আমার অসুখের কী সম্পর্ক তা বুঝতে পারছি না।';
+    } else if (isBanglish) {
+      return 'Doctor, ami to oshustho hoye apnar kache eshechi. Eitar shathe amar roger ki shomporko?';
+    }
+
+    return "Doctor, I came here today because I'm feeling sick and need your help. I'm not sure how that question relates to my medical problem.";
   }
 
   /**
@@ -89,6 +113,7 @@ export class PatientDisclosureRules {
 
   /**
    * Applies personality tone and phrasing to a factual statement.
+   * Respects demographic intents so personal details remain clean and polite.
    */
   public static applyPersonality(
     baseText: string,
@@ -97,6 +122,19 @@ export class PatientDisclosureRules {
     intent: ClinicalIntent
   ): string {
     const isBn = language === 'bn';
+
+    // Demographics: Keep clean, polite, direct
+    const isDemographic = ['AGE', 'NAME', 'SEX', 'OCCUPATION', 'MARITAL_STATUS'].includes(intent);
+    const cleanBase = baseText.replace(/[।.,!?\s]+$/, '');
+    if (isDemographic) {
+      if (isBn) {
+        if (personality === 'anxious' && !baseText.includes('ডাক্তার')) {
+          return `${baseText} ডাক্তার সাহেব।`;
+        }
+        return baseText;
+      }
+      return baseText;
+    }
 
     if (isBn) {
       switch (personality) {
@@ -107,7 +145,7 @@ export class PatientDisclosureRules {
         case 'talkative':
           return `জি ডাক্তার সাহেব, বলতে গেলে ${baseText}। আসলে কদিন ধরে এটা নিয়েই বারবার ভাবছিলাম।`;
         case 'frustrated':
-          return `অনেকক্ষণ ধরে বসে আছি ডাক্তার সাহেব... ${baseText} দয়া করে একটু দেখুন কী করা যায়।`;
+          return `অনেকক্ষণ ধরে কষ্ট পাচ্ছি ডাক্তার সাহেব... ${baseText} দয়া করে একটু দেখুন কী করা যায়।`;
         case 'concerned':
           return `${baseText}। আমি শুধু চিন্তা করছি কবে আবার স্বাভাবিক কাজে ফিরতে পারব।`;
         default:

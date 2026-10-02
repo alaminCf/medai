@@ -13,10 +13,8 @@ export class ClinicalConsistencyValidator {
     const text = proposedResponse.toLowerCase();
 
     // 1. Check if it leaks hidden diagnosis
-    let containsHiddenDiagnosis = false;
     const hidden = caseContext.hiddenDiagnosis?.toLowerCase();
     if (hidden) {
-      // Check for specific diagnostic terms
       const dangerousTerms = [
         'nstemi',
         'stemi',
@@ -32,11 +30,9 @@ export class ClinicalConsistencyValidator {
       ];
 
       for (const term of dangerousTerms) {
-        // Only flag if patient states they themselves have it (not when mentioning family history or father)
         if (text.includes(term) && !studentQuestion.toLowerCase().includes(term)) {
           const isFamilyMention = text.includes('father') || text.includes('mother') || text.includes('family') || text.includes('বাবা') || text.includes('পরিবার');
           if (!isFamilyMention) {
-            containsHiddenDiagnosis = true;
             return {
               valid: false,
               reason: `Proposed response accidentally revealed hidden diagnosis: "${term}"`,
@@ -49,7 +45,7 @@ export class ClinicalConsistencyValidator {
       }
     }
 
-    // 2. Check if patient speaks like a doctor
+    // 2. Check if patient speaks like a textbook doctor
     const doctorTerms = [
       'differential diagnosis',
       'prognosis',
@@ -72,17 +68,21 @@ export class ClinicalConsistencyValidator {
       }
     }
 
-    // 3. Check for severe factual contradiction with state
-    let containsContradiction = false;
-    if (text.includes('no pain') && state.disclosedFactIds.includes('chief_complaint') && caseContext.chiefComplaint.toLowerCase().includes('pain')) {
-      containsContradiction = true;
-      return {
-        valid: false,
-        reason: 'Patient contradicted established chief complaint of pain',
-        containsHiddenDiagnosis: false,
-        containsContradiction: true,
-        answersQuestion: true,
-      };
+    // 3. Check for severe factual contradiction with state facts
+    // Example: If student asked age, response must not contradict patientAge
+    const age = caseContext.patientAge;
+    if (state.currentIntents.includes('AGE')) {
+      const bnDigits = (n: number) => n.toString().replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[parseInt(d)]);
+      const hasCorrectAge = text.includes(age.toString()) || text.includes(bnDigits(age));
+      if (!hasCorrectAge) {
+        return {
+          valid: false,
+          reason: `Patient response does not contain correct age (${age})`,
+          containsHiddenDiagnosis: false,
+          containsContradiction: true,
+          answersQuestion: false,
+        };
+      }
     }
 
     return {

@@ -16,6 +16,8 @@ export * from './conversationState';
 export * from './disclosureRules';
 export * from './clinicalConsistencyValidator';
 export * from './dynamicResponseGenerator';
+export * from './truthLayer';
+export * from './factRetrievalService';
 
 export class StatefulPatientEngine {
   /**
@@ -42,6 +44,7 @@ export class StatefulPatientEngine {
       state.currentTopic
     );
 
+    state.currentIntents = intentResult.intents;
     const detectedLanguage = intentResult.detectedLanguage;
 
     // 3. Dynamic Response Generation with Grounded Fact Retrieval & Disclosure Rules

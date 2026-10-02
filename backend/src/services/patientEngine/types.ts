@@ -33,6 +33,12 @@ export type FactDisclosureStatus = 'undisclosed' | 'partially_disclosed' | 'disc
 // ────────────────────────────────────────────────────────────────────────────
 
 export type ClinicalIntent =
+  // Patient Identity & Demographics
+  | 'AGE'
+  | 'NAME'
+  | 'SEX'
+  | 'OCCUPATION'
+  | 'MARITAL_STATUS'
   // Opening & General
   | 'INTRODUCTION'
   | 'CHIEF_COMPLAINT'
@@ -50,6 +56,7 @@ export type ClinicalIntent =
   | 'RADIATION'
   | 'AGGRAVATING_FACTORS'
   | 'RELIEVING_FACTORS'
+  | 'PROGRESSION'
   | 'ASSOCIATED_SYMPTOMS'
   // Specific System Review
   | 'FEVER'
@@ -61,9 +68,13 @@ export type ClinicalIntent =
   | 'NAUSEA'
   | 'VOMITING'
   | 'BOWEL_HABITS'
+  | 'BOWEL_CHANGE'
   | 'URINARY_SYMPTOMS'
+  | 'APPETITE'
+  | 'WEIGHT_CHANGE'
   | 'RASH'
   | 'SWELLING'
+  | 'HEADACHE'
   // Patient History
   | 'PAST_MEDICAL_HISTORY'
   | 'PAST_SURGICAL_HISTORY'
@@ -74,6 +85,8 @@ export type ClinicalIntent =
   | 'SOCIAL_HISTORY'
   | 'SMOKING'
   | 'ALCOHOL'
+  | 'DIET'
+  | 'SLEEP'
   | 'OCCUPATIONAL_HISTORY'
   | 'MENSTRUAL_HISTORY'
   | 'PREGNANCY_RELATED'
@@ -88,6 +101,7 @@ export type ClinicalIntent =
   // Safety & Boundary
   | 'DIRECT_DIAGNOSIS_QUERY'
   | 'UNSUPPORTED_OR_DOCTOR_QUERY'
+  | 'UNRELATED_QUERY'
   | 'OTHER';
 
 // ────────────────────────────────────────────────────────────────────────────
