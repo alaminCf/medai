@@ -303,6 +303,15 @@ export default function MaterialsLibraryPage() {
             </div>
 
             <form onSubmit={handleUploadSubmit} className="space-y-4">
+              {isUploading && (
+                <div className="p-3 bg-teal-50 border border-teal-200 text-teal-800 text-xs rounded-xl flex items-center gap-2.5 animate-pulse">
+                  <div className="w-4 h-4 border-2 border-teal-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  <div>
+                    <span className="font-bold block">AI Multimodal Vision Transcription in Progress</span>
+                    <span className="text-[11px] text-teal-600">Transcribing medical handwriting and organizing high-yield concepts (approx. 20–40s). Please wait...</span>
+                  </div>
+                </div>
+              )}
               {uploadError && (
                 <div className="p-3 bg-red-50 text-red-700 text-xs rounded-lg flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -425,7 +434,7 @@ export default function MaterialsLibraryPage() {
                   {isUploading ? (
                     <>
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Extracting Content...</span>
+                      <span>Processing OCR & Medical Concepts...</span>
                     </>
                   ) : (
                     <>

@@ -44,7 +44,7 @@ export const learningService = {
   },
 
   async uploadMaterial(formData: FormData): Promise<StudyMaterial> {
-    const res = await api.post('/learning/materials/upload', formData);
+    const res = await api.post('/learning/materials/upload', formData, { timeout: 180000 });
     return res.data.material;
   },
 
@@ -491,17 +491,17 @@ export const learningService = {
   // DUAL-MODE LEARNING HUB & CLASSROOM SYNC
   // ────────────────────────────────────────────────────────
   async generateHubFromUpload(formData: FormData): Promise<any> {
-    const res = await api.post('/learning/hub/generate-from-upload', formData);
+    const res = await api.post('/learning/hub/generate-from-upload', formData, { timeout: 180000 });
     return res.data;
   },
 
   async generateAICurriculumHub(params: { subject: string; topic: string; difficulty?: string }): Promise<any> {
-    const res = await api.post('/learning/hub/generate-ai-curriculum', params);
+    const res = await api.post('/learning/hub/generate-ai-curriculum', params, { timeout: 180000 });
     return res.data;
   },
 
   async createStudyPlanFromClassMaterial(formData: FormData): Promise<any> {
-    const res = await api.post('/adaptive/study-plan/from-class-material', formData);
+    const res = await api.post('/adaptive/study-plan/from-class-material', formData, { timeout: 180000 });
     return res.data;
   },
 };

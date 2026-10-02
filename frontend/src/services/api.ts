@@ -5,7 +5,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 30000,
+  timeout: 180000, // 3 minutes timeout for multimodal Vision OCR and AI hub generation
 });
 
 // Attach token to every request and ensure FormData uploads set dynamic boundary
@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
   // When sending FormData, delete Content-Type so the browser automatically sets
   // multipart/form-data WITH the correct boundary parameter!
   if (config.data instanceof FormData) {
-    delete config.headers['Content-Type'];
+    if (config.headers) {
+      delete config.headers['Content-Type'];
+    }
+    config.timeout = 180000;
   }
   return config;
 });

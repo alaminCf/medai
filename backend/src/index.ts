@@ -164,9 +164,11 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log('Server started on port', PORT);
   });
+  server.timeout = 240000; // 4 minutes timeout for AI OCR & multimodal generation
+  server.keepAliveTimeout = 65000;
 }
 
 export default app;
