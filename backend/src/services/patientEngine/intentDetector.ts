@@ -30,6 +30,12 @@ export function normalizeInputText(text: string): string {
     .replace(/দিয়ে/g, "দিয়ে")
     .replace(/ডায়াবেটিস/g, "ডায়াবেটিস")
     .replace(/নিয়মিত/g, "নিয়মিত")
+    .replace(/ব্যাথা/g, "ব্যথা")
+    .replace(/বেথা/g, "ব্যথা")
+    .replace(/চক্ষু/g, "চোখ")
+    .replace(/ডানপাশে/g, "ডান পাশে")
+    .replace(/বামপাশে/g, "বাম পাশে")
+    .replace(/মাঝামাঝি/g, "মাঝখানে")
     .trim();
 }
 
@@ -198,9 +204,67 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'LOCATION',
     priority: 85,
     patterns: [
-      /(where is the pain|where does it hurt|show me where|location of the pain|which part|point to the pain|^where\??$|\bwhere\b)/i,
+      /(where is the pain|where does it hurt|show me where|location of the pain|which part|point to the pain|^where\??$|\bwhere\b|front or back|top of head|back of head|temple|forehead|vertex|occipital|which side)/i,
       /(?:কোথায়\s*(?:ব্যথা|কষ্ট|সমস্যা|হচ্ছে)|জায়গাটা\s*কোথায়|জায়গাটা\s*দেখান|কোন\s*জায়গায়|কোন\s*পাশে|ব্যথাটা\s*কোথায়|আঙুল\s*দিয়ে\s*দেখা|^কোথায়\??$|\bকোথায়\b)/i,
-      /(kothay\s*batha|kothay\s*betha|kothay\s*kosto|kon\s*jaygay|^kothay\??$|\bkothay\b)/i,
+      /(?:মাথার\s*(?:উপরে|উপরের|পেছনে|পেছনের|সামনে|সামনের|মাঝামাঝি|মাঝখানে|ডান|বাম|একপাশে|দুপাশে|রগে|কপালে|পাশে))/i,
+      /(?:সামনের\s*দিকে\s*(?:নাকি|বা)\s*পেছনের\s*দিকে|উপরে\s*(?:নাকি|বা)\s*পেছনে|ডান\s*(?:পাশে|দিকে)\s*নাকি\s*বাম|কোন\s*দিকে\s*(?:বেশি|কম)?\s*ব্যথা)/i,
+      /(?:মাথার\s*(?:কোন|কোনো)\s*অংশে|ব্যাখ্যা\s*কর|বলতো|দেখান).*(?:ব্যথা|কষ্ট)/i,
+      /(kothay\s*batha|kothay\s*betha|kothay\s*kosto|kon\s*jaygay|^kothay\??$|\bkothay\b|mathar\s*upore|mathar\s*pechone|mathar\s*samne|samne\s*naki\s*pechone)/i,
+    ],
+  },
+
+  // 8b. Ocular & Eye Symptoms
+  {
+    intent: 'OCULAR_SYMPTOM',
+    priority: 84,
+    patterns: [
+      /(eye pain|pain in eyes|pain behind eyes|vision problem|blur|blurred vision|photophobia|sensitive to light|seeing lights|flashing lights)/i,
+      /(?:চোখ.*?(?:ব্যথা|টনটন|কষ্ট|ঝাপসা|জল)|চক্ষু.*?(?:ব্যথা|কষ্ট)|আলো.*?(?:লাগে|কষ্ট|সহ্য)|দৃষ্টিরs*সমস্যা|চক্ষু)/i,
+      /(chokhe\s*batha|chokh\s*batha|chokher\s*pechone|alo\s*lagle|photophobia)/i,
+    ],
+  },
+
+  // 8c. Meningism & Neck Symptoms
+  {
+    intent: 'MENINGISM',
+    priority: 84,
+    patterns: [
+      /(stiff neck|neck stiffness|neck pain|difficulty bending neck|can you touch your chin to chest)/i,
+      /(?:ঘাড়.*?(?:শক্ত|নাড়াতে|ব্যথা|টান|বাঁকাতে)|ঘাড়েs*ব্যথা)/i,
+      /(ghar.*?shokto|ghar\s*batha|stiff\s*neck)/i,
+    ],
+  },
+
+  // 8d. Trauma & Head Injury History
+  {
+    intent: 'TRAUMA_HISTORY',
+    priority: 84,
+    patterns: [
+      /(head injury|head trauma|did you fall|hit your head|any accident|physical trauma)/i,
+      /(?:মাথায়.*?(?:আঘাত|চোট|লেগেছে)|পড়েs*গিয়েছিলেন|কোনোs*দুর্ঘটনা|আঘাতs*লেগেছে|চোটs*লেগেছে)/i,
+      /(mathay.*?aghat|mathay.*?chot|pore\s*gesilen|accident)/i,
+    ],
+  },
+
+  // 8e. Neurological Screening (Red Flags)
+  {
+    intent: 'NEUROLOGICAL_SCREENING',
+    priority: 84,
+    patterns: [
+      /(weakness|numbness|slurred speech|facial droop|tingling|seizures|convulsions|blackout)/i,
+      /(?:হাতs*পা.*?(?:অবশ|দুর্বল|ঝিমঝিম)|অবশs*লাগে|কথা.*?(?:জড়িয়ে|আটকে)|মুখs*বাঁকা|খিঁচুনি|অসাড়)/i,
+      /(obosh|kotha.*?joriye|weakness|numbness)/i,
+    ],
+  },
+
+  // 8f. Phonophobia (Sound Sensitivity)
+  {
+    intent: 'PHONOPHOBIA',
+    priority: 83,
+    patterns: [
+      /(sound bother|loud noise|noise make it worse|phonophobia|sensitive to noise)/i,
+      /(?:শব্দ.*?(?:কষ্ট|সহ্য|যন্ত্রণা|অসহ্য)|আওয়াজ.*?(?:হলে|কষ্ট)|জোরেs*শব্দ|গোলমালs*হলে)/i,
+      /(shobde.*?kosto|awaj.*?hole|sound\s*bother)/i,
     ],
   },
 

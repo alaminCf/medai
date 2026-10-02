@@ -294,8 +294,56 @@ async function runIntelligentBrainTestSuite() {
     t40.intents.includes("ONSET") && (t40.message.includes("৪ দিন আগে") || t40.message.includes("কয়েকদিন আগে")),
     `Response: "${t40.message}"`);
 
+  // 41. Live Doctor Query: Vertex vs Occipital vs Midline Headache Localization
+  const headacheCase = {
+    id: "64935ee6-737e-4457-9ea0-39b50cc03a02",
+    patientName: "নুসরাত জাহান",
+    patientAge: 46,
+    patientGender: "Female",
+    chiefComplaint: "মাথার ডান পাশে তীব্র দপদপানি ব্যথা, আর আলো সহ্য হচ্ছে না।",
+    personality: "concerned",
+    language: "bn",
+    symptomDetails: "Unilateral right-sided throbbing headache (8/10) that started 5 hours ago. Preceded by visual scintillating scotoma (zigzag flashing lights) 30 minutes prior. Photophobia, phonophobia, and severe nausea. No fever, no trauma, no neck stiffness, no weakness.",
+    medicalHistory: "Recurrent episodic headaches 2-3 times per year. Otherwise healthy.",
+    medicationHistory: "Takes Ibuprofen 400mg occasionally.",
+    allergyHistory: "Allergic to penicillin.",
+    familyHistory: "Mother suffered from classic migraines.",
+    socialHistory: "Housewife, non-smoker.",
+    hiddenDiagnosis: "Classic Migraine with Visual Aura",
+  };
+  const headacheSessionId = "session_headache_test_" + Date.now();
+
+  const t41 = await StatefulPatientEngine.processTurn(headacheSessionId, headacheCase, "মাথার উপরের দিকে নাকি পেছনের দিক নাকি মাঝামাঝি অবস্থায় ব্যাথা করছে একটু ব্যাখ্যা কর বলতো");
+  assert(41, "Headache Site: মাথার উপরে নাকি পেছনে নাকি মাঝামাঝি",
+    t41.intents.includes("LOCATION") && t41.message.includes("ডানপাশে") && !t41.message.includes("মনে পড়ছে না"),
+    `Response: "${t41.message}"`);
+
+  // 42. Live Doctor Query: Frontal vs Occipital Headache Clarification
+  const t42 = await StatefulPatientEngine.processTurn(headacheSessionId, headacheCase, "আমি বলছি তোমার মাথার সামনের দিকে ব্যথা বেশি হচ্ছে নাকি পেছনের দিকে");
+  assert(42, "Headache Site Follow-up: সামনের দিকে নাকি পেছনের দিকে",
+    t42.intents.includes("LOCATION") && t42.message.includes("ডানপাশে") && !t42.message.includes("মনে পড়ছে না"),
+    `Response: "${t42.message}"`);
+
+  // 43. Live Doctor Query: Ocular / Eye Ache In Migraine (চক্ষু ব্যথা)
+  const t43 = await StatefulPatientEngine.processTurn(headacheSessionId, headacheCase, "মাথা ব্যথার সাথে কি তোমার চক্ষু ব্যথা করে");
+  assert(43, "Ocular / Photophobia Assessment: চক্ষু ব্যথা করে কি",
+    t43.intents.includes("OCULAR_SYMPTOM") && (t43.message.includes("চোখ") || t43.message.includes("আলো")) && !t43.message.includes("মনে পড়ছে না"),
+    `Response: "${t43.message}"`);
+
+  // 44. Pertinent Negative Screening: Neck Stiffness (Meningism)
+  const t44 = await StatefulPatientEngine.processTurn(headacheSessionId, headacheCase, "ঘাড় কি শক্ত মনে হয়?");
+  assert(44, "Pertinent Negative: ঘাড় শক্ত মনে হয় কি",
+    t44.intents.includes("MENINGISM") && (t44.message.includes("ঘাড়ে কোনো ব্যথা") || t44.message.includes("না")),
+    `Response: "${t44.message}"`);
+
+  // 45. Pertinent Negative Screening: Head Trauma / Injury
+  const t45 = await StatefulPatientEngine.processTurn(headacheSessionId, headacheCase, "মাথায় কোনো চোট লেগেছিল কি?");
+  assert(45, "Pertinent Negative: মাথায় চোট লেগেছিল কি",
+    t45.intents.includes("TRAUMA_HISTORY") && (t45.message.includes("আঘাত বা চোট লাগেনি") || t45.message.includes("না")),
+    `Response: "${t45.message}"`);
+
   console.log("\n════════════════════════════════════════════════════════════════════");
-  console.log(`  INTELLIGENT BRAIN TEST RESULTS: ${passed} PASSED / ${failed} FAILED (TOTAL 40)`);
+  console.log(`  INTELLIGENT BRAIN TEST RESULTS: ${passed} PASSED / ${failed} FAILED (TOTAL 45)`);
   console.log("════════════════════════════════════════════════════════════════════\n");
 
   if (failed > 0) {

@@ -51,6 +51,11 @@ export interface PatientTruthLayer {
     palpitation: { present: boolean; descriptionEn: string; descriptionBn: string };
     syncope: { present: boolean; descriptionEn: string; descriptionBn: string };
     dizziness: { present: boolean; descriptionEn: string; descriptionBn: string };
+    ocular: { present: boolean; descriptionEn: string; descriptionBn: string };
+    phonophobia: { present: boolean; descriptionEn: string; descriptionBn: string };
+    neckStiffness: { present: boolean; descriptionEn: string; descriptionBn: string };
+    trauma: { present: boolean; descriptionEn: string; descriptionBn: string };
+    neurologicalDeficit: { present: boolean; descriptionEn: string; descriptionBn: string };
   };
   pastMedicalHistory: {
     descriptionEn: string;
@@ -197,8 +202,8 @@ export class TruthLayerBuilder {
       locationBn = 'পেটের ওপরের মাঝের অংশে, ঠিক বুকের খাঁচার নিচে।';
     } else if (sym.includes('unilateral') || sym.includes('right-sided') || sym.includes('left-sided') || cc.toLowerCase().includes('headache')) {
       const side = sym.includes('left') ? 'বাম' : 'ডান';
-      locationEn = `Mainly on the ${side === 'বাম' ? 'left' : 'right'} side of my head, around the temple.`;
-      locationBn = `মাথার ${side}পাশে, কানের ওপরের দিকে বেশি অনুভূত হচ্ছে।`;
+      locationEn = `Mainly on the ${side === 'বাম' ? 'left' : 'right'} side of my head, around the temple and above my ear. It is not on top of my head or the back of my head.`;
+      locationBn = `মাথার ${side}পাশে, বিশেষ করে কানের ওপরে এবং রগের কাছে বেশি ব্যথাটা হচ্ছে ডাক্তার। মাথার উপরে বা পেছনের দিকে নয়।`;
     }
 
     // 4. Character
@@ -284,6 +289,11 @@ export class TruthLayerBuilder {
     const hasPalpitation = sym.includes('palpitation') || sym.includes('racing heart');
     const hasCough = sym.includes('cough') && !sym.includes('no cough');
     const hasSyncope = sym.includes('syncope') || sym.includes('fainted') || sym.includes('blackout');
+    const hasOcular = (sym.includes('ocular') || sym.includes('eye') || sym.includes('scotoma') || sym.includes('photophobia') || sym.includes('retro-orbital') || combinedText.includes('চোখ') || combinedText.includes('দৃষ্টি') || combinedText.includes('চক্ষু')) && !sym.includes('no eye pain');
+    const hasPhono = (sym.includes('phonophobia') || sym.includes('noise') || sym.includes('sound')) && !sym.includes('no phonophobia');
+    const hasNeck = (sym.includes('stiff neck') || sym.includes('neck stiffness') || sym.includes('mening')) && !sym.includes('no neck stiffness') && !sym.includes('supple');
+    const hasTrauma = (sym.includes('trauma') || sym.includes('fall') || sym.includes('injury') || sym.includes('accident')) && !sym.includes('no trauma') && !sym.includes('no injury');
+    const hasNeuro = (sym.includes('weakness') || sym.includes('numbness') || sym.includes('slurred') || sym.includes('facial droop')) && !sym.includes('no weakness');
 
     // 9. Past Medical & Surgical
     const conditions: string[] = [];
@@ -436,6 +446,55 @@ export class TruthLayerBuilder {
           present: sym.includes('dizziness') || sym.includes('lightheaded'),
           descriptionEn: sym.includes('dizziness') ? "Yes, I feel dizzy and lightheaded when standing." : "No, I don't feel dizzy.",
           descriptionBn: sym.includes('dizziness') ? "জি ডাক্তার, দাঁড়ালে মাথা চক্কর দিয়ে ওঠে।" : "না ডাক্তার, মাথা ঘোরার কোনো অনুভূতি নেই।",
+        },
+        ocular: {
+          present: hasOcular,
+          descriptionEn: hasOcular
+            ? (sym.includes('retro-orbital') || cc.toLowerCase().includes('dengue')
+                ? "Yes doctor, I have severe deep aching behind both of my eyes."
+                : "Yes doctor, there is throbbing pain behind my eye, and light makes it so painful that I can barely open my eyes.")
+            : "No doctor, I do not have any eye pain or vision problems.",
+          descriptionBn: hasOcular
+            ? (sym.includes('retro-orbital') || cc.toLowerCase().includes('dengue')
+                ? "জি ডাক্তার, দুই চোখের পেছনের দিকে তীব্র চাপ ও অসহ্য টনটন করা ব্যথা হচ্ছে।"
+                : "জি ডাক্তার, চোখের পেছনে এবং চারপাশেও বেশ চাপ ও টনটন করে ব্যথা লাগে, বিশেষ করে আলো দেখলে চোখ মেলাই দায় হয়ে যায়।")
+            : "না ডাক্তার সাহেব, আমার চোখে কোনো সমস্যা বা চোখে কোনো ব্যথা নেই।",
+        },
+        phonophobia: {
+          present: hasPhono,
+          descriptionEn: hasPhono
+            ? "Yes doctor, loud noise or sounds make the headache unbearable."
+            : "No doctor, noise does not particularly bother me.",
+          descriptionBn: hasPhono
+            ? "জি ডাক্তার, একটু জোরে আওয়াজ বা শব্দ হলেও মাথায় খুব বেশি যন্ত্রণা লাগে।"
+            : "না ডাক্তার, শব্দে কোনো বাড়তি কষ্ট হয় না।",
+        },
+        neckStiffness: {
+          present: hasNeck,
+          descriptionEn: hasNeck
+            ? "Yes doctor, my neck feels rigid and painful when I try to bend it."
+            : "No doctor, my neck is completely supple and moves without any pain.",
+          descriptionBn: hasNeck
+            ? "জি ডাক্তার, ঘাড় খুব শক্ত হয়ে আছে এবং সামনে ঝোঁকাতে খুব কষ্ট হয়।"
+            : "না ডাক্তার সাহেব, আমার ঘাড়ে কোনো ব্যথা বা টান লাগার সমস্যা নেই, ঘাড় স্বাভাবিকভাবেই সবদিকে নাড়াতে পারছি।",
+        },
+        trauma: {
+          present: hasTrauma,
+          descriptionEn: hasTrauma
+            ? "Yes doctor, I had a recent injury to my head or body."
+            : "No doctor, I have not had any head injury, fall, or physical trauma.",
+          descriptionBn: hasTrauma
+            ? "জি ডাক্তার, আমার একটা চোট লেগেছিল।"
+            : "না ডাক্তার, আমার মাথায় বা শরীরে কোনো আঘাত বা চোট লাগেনি।",
+        },
+        neurologicalDeficit: {
+          present: hasNeuro,
+          descriptionEn: hasNeuro
+            ? "Yes doctor, I have noticed some numbness or weakness in my limbs."
+            : "No doctor, I have no weakness or numbness in my limbs, and no speech difficulty.",
+          descriptionBn: hasNeuro
+            ? "জি ডাক্তার, হাত-পায়ে একটু অবশ ভাব আছে।"
+            : "না ডাক্তার সাহেব, কোনো অঙ্গ অবশ হওয়া, ঝিমঝিম করা বা কথা জড়িয়ে যাওয়ার মতো কোনো সমস্যা হয়নি।",
         },
       },
       pastMedicalHistory: {

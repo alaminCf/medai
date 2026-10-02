@@ -103,6 +103,21 @@ export class PatientFactRetrievalService {
         case 'DIZZINESS':
           keys.push('dizziness');
           break;
+        case 'OCULAR_SYMPTOM':
+          keys.push('ocular_symptom');
+          break;
+        case 'MENINGISM':
+          keys.push('neck_stiffness');
+          break;
+        case 'TRAUMA_HISTORY':
+          keys.push('trauma_history');
+          break;
+        case 'NEUROLOGICAL_SCREENING':
+          keys.push('neurological_screening');
+          break;
+        case 'PHONOPHOBIA':
+          keys.push('phonophobia');
+          break;
 
         // Histories
         case 'PAST_MEDICAL_HISTORY':

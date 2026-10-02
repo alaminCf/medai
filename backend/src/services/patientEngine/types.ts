@@ -2,7 +2,7 @@
 // Techboloy Med — Stateful AI Patient Conversation Engine Types
 // ────────────────────────────────────────────────────────────────────────────
 
-export type AIProvider = 'openai' | 'anthropic' | 'google' | 'mock';
+export type AIProvider = 'openai' | 'anthropic' | 'google' | 'gemini' | 'mock';
 
 export type PatientEmotion =
   | 'neutral'
@@ -75,6 +75,11 @@ export type ClinicalIntent =
   | 'RASH'
   | 'SWELLING'
   | 'HEADACHE'
+  | 'OCULAR_SYMPTOM'
+  | 'MENINGISM'
+  | 'TRAUMA_HISTORY'
+  | 'NEUROLOGICAL_SCREENING'
+  | 'PHONOPHOBIA'
   // Patient History
   | 'PAST_MEDICAL_HISTORY'
   | 'PAST_SURGICAL_HISTORY'
