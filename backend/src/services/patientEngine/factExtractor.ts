@@ -12,12 +12,15 @@ export class StructuredClinicalFactExtractor {
     const truth = TruthLayerBuilder.build(caseContext);
 
     // 1. DEMOGRAPHICS (AGE, NAME, GENDER, OCCUPATION, MARITAL STATUS)
+    const enToBnDigits = (n: number | string) =>
+      String(n).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'.charAt(parseInt(d, 10)));
+
     facts['age'] = {
       factId: 'age',
       category: 'AGE',
       name: 'Patient Age',
       valueEn: `I am ${truth.demographics.age} years old, doctor.`,
-      valueBn: `আমার বয়স ${truth.demographics.age} বছর, ডাক্তার।`,
+      valueBn: `আমার বয়স ${enToBnDigits(truth.demographics.age)} বছর, ডাক্তার।`,
       synonyms: ['age', 'years old', 'how old', 'বয়স', 'বয়েস', 'বছর'],
       importance: 'critical',
       status: 'undisclosed',
@@ -85,12 +88,15 @@ export class StructuredClinicalFactExtractor {
       disclosureCount: 0,
     };
 
+    const durBnRaw = (truth.hpi.durationBn || truth.hpi.duration || '').trim();
+    const durBnClean = durBnRaw.includes('ধরে') ? durBnRaw : `${durBnRaw} ধরে`;
+
     facts['duration'] = {
       factId: 'duration',
       category: 'DURATION',
       name: 'Symptom Duration',
       valueEn: `It has been going on ${truth.hpi.duration}.`,
-      valueBn: `এটা প্রায় ${truth.hpi.durationBn || truth.hpi.duration} ধরে হচ্ছে ডাক্তার।`,
+      valueBn: `এটা প্রায় ${durBnClean} হচ্ছে ডাক্তার।`,
       synonyms: ['how long', 'duration', 'time', 'কতদিন', 'কতক্ষণ', 'যাবত'],
       importance: 'critical',
       status: 'undisclosed',

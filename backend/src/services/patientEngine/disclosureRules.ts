@@ -139,17 +139,20 @@ export class PatientDisclosureRules {
     if (isBn) {
       switch (personality) {
         case 'anxious':
-          return `ডাক্তার সাহেব... ${baseText} এটা কি কোনো বড় বিপদের লক্ষণ ডাক্তার সাহেব?`;
+          return `ডাক্তার সাহেব... ${cleanBase}। এটা কি কোনো বড় বিপদের লক্ষণ ডাক্তার সাহেব?`;
         case 'quiet':
-          return baseText;
+          return `${cleanBase}।`;
         case 'talkative':
-          return `জি ডাক্তার সাহেব, বলতে গেলে ${baseText}। আসলে কদিন ধরে এটা নিয়েই বারবার ভাবছিলাম।`;
+          return `জি ডাক্তার সাহেব, বলতে গেলে ${cleanBase}। আসলে কদিন ধরে এটা নিয়েই বারবার ভাবছিলাম।`;
         case 'frustrated':
-          return `অনেকক্ষণ ধরে কষ্ট পাচ্ছি ডাক্তার সাহেব... ${baseText} দয়া করে একটু দেখুন কী করা যায়।`;
+          return `অনেকক্ষণ ধরে কষ্ট পাচ্ছি ডাক্তার সাহেব... ${cleanBase}। দয়া করে একটু দেখুন কী করা যায়।`;
         case 'concerned':
-          return `${baseText}। আমি শুধু চিন্তা করছি কবে আবার স্বাভাবিক কাজে ফিরতে পারব।`;
+          if (['DURATION', 'ONSET', 'LOCATION', 'RADIATION', 'SEVERITY', 'FEVER', 'MEDICATION', 'ALLERGY'].includes(intent)) {
+            return `${cleanBase}।`;
+          }
+          return `${cleanBase}। আমি শুধু চিন্তা করছি কবে আবার স্বাভাবিক কাজে ফিরতে পারব।`;
         default:
-          return `জি ডাক্তার সাহেব, ${baseText}`;
+          return cleanBase.startsWith('জি') ? `${cleanBase}।` : `জি ডাক্তার সাহেব, ${cleanBase}।`;
       }
     }
 

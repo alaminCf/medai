@@ -91,7 +91,7 @@ app.get('/api/debug', async (_req, res) => {
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'techboloy-med-backend', version: '2.3.0-patient-brain-phase1', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'techboloy-med-backend', version: '2.3.1-bengali-nfc-colloquial-fix', timestamp: new Date().toISOString() });
 });
 
 // API Routes

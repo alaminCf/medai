@@ -4,6 +4,35 @@ import { ClinicalIntent, IntentDetectionResult, LanguageMode } from './types';
 // Language Detection Helper
 // ────────────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────────────
+// Text Normalization Helper (Bengali Unicode NFC & Colloquial Variants)
+// ────────────────────────────────────────────────────────────────────────────
+
+export function normalizeInputText(text: string): string {
+  if (!text) return "";
+  return text
+    .normalize("NFC")
+    .replace(/\u09AF\u09BC/g, "\u09DF") // decomposed য় -> precomposed য়
+    .replace(/\u09A1\u09BC/g, "\u09DC") // decomposed ড় -> precomposed ড়
+    .replace(/\u09A2\u09BC/g, "\u09DD") // decomposed ঢ় -> precomposed ঢ়
+    .replace(/ঔষধ/g, "ওষুধ")
+    .replace(/এলার্জি/g, "অ্যালার্জি")
+    .replace(/বয়েস/g, "বয়স")
+    .replace(/বয়েস/g, "বয়স")
+    .replace(/বয়স/g, "বয়স")
+    .replace(/কতো/g, "কত")
+    .replace(/কী/g, "কি")
+    .replace(/যাবৎ/g, "যাবত")
+    .replace(/হয়েছে/g, "হয়েছে")
+    .replace(/কোথায়/g, "কোথায়")
+    .replace(/ছড়িয়ে/g, "ছড়িয়ে")
+    .replace(/পড়ে/g, "পড়ে")
+    .replace(/দিয়ে/g, "দিয়ে")
+    .replace(/ডায়াবেটিস/g, "ডায়াবেটিস")
+    .replace(/নিয়মিত/g, "নিয়মিত")
+    .trim();
+}
+
 export function detectLanguage(text: string): LanguageMode {
   // Check for Bengali Unicode block (0980-09FF)
   const banglaRegex = /[\u0980-\u09FF]/;
@@ -69,9 +98,10 @@ const INTENT_RULES: IntentRule[] = [
     priority: 95,
     patterns: [
       /(how old are you|what is your age|your age|tell me your age|how old|age please|how many years old)/i,
-      /(আপনার|রোগীর)?\s*(বয়স|বয়েস|age)\s*(কত|কতো|বলবেন|জানতে পারি)?/i,
-      /(কত\s*বছর\s*বয়স|বয়স\s*কত|বয়স\s*কতো|কতো\s*বছর|কত\s*বয়স|বয়স\s*জানতে\s*চাই)/i,
-      /(apnar|apni)?\s*(boyos|boyosh|boyes|age)\s*(koto|koth|bolben|hobe)?/i,
+      /(?:আপনার|তোমার|তোর|রোগীর|বলো|বলুন)?\s*(?:এবার\s*)?(?:বয়স|বয়েস|এজ|age|boyos|boyosh)\s*(?:কত|koto|বলবেন|বলো|বল|জানতে পারি)?/i,
+      /(?:বয়স|বয়েস|এজ|age|boyos|boyosh).*(?:কত|koto)/i,
+      /(?:কত|koto).*(?:বয়স|বয়েস|এজ|age|boyos|boyosh|বছর|bochor)/i,
+      /(apnar|apni|tomar)?\s*(boyos|boyosh|boyes|age)\s*(koto|koth|bolben|hobe)?/i,
       /(koto\s*bochor\s*boyos|age\s*koto|koto\s*bochor)/i,
     ],
   },
@@ -144,7 +174,9 @@ const INTENT_RULES: IntentRule[] = [
     priority: 86,
     patterns: [
       /(how long|duration|for how many days|for how long|since when has this been going on|how many hours)/i,
-      /(কতদিন\s*ধরে|কতোদিন\s*ধরে|কতদিন\s*হলো|কতক্ষণ\s*ধরে|কতদিন\s*যাবত|কতদিন\s*যাবৎ|কত\s*সময়\s*ধরে|কতোদিন|কত\s*ঘণ্টা\s*ধরে)/i,
+      /(?:কতদিন|কতোদিন|কতক্ষণ|কত\s*সময়|কত\s*ঘণ্টা|কত\s*বছর)\s*(?:ধরে|যাবত|যাবৎ|হলো|হচ্ছে)?/i,
+      /\b(?:কতদিন|কতোদিন|কত\s*দিন)\b/i,
+      /(?:সমস্যা|কষ্ট|ব্যথা|অসুখ|এটা).*?(?:কতদিন|কতক্ষণ|কবেকার)/i,
       /(koto\s*din\s*dhore|kotodin\s*dhore|koto\s*din\s*holo|koto\s*somoy|how\s*long)/i,
     ],
   },
@@ -155,7 +187,8 @@ const INTENT_RULES: IntentRule[] = [
     priority: 86,
     patterns: [
       /(when did it start|how did it begin|sudden or gradual|when did this first appear|when did you first feel)/i,
-      /(কখন\s*থেকে|কখন\s*শুরু|হঠাৎ\s*নাকি|কীভাবে\s*শুরু|কখন\s*প্রথম)/i,
+      /(?:কবে|কখন|কবেকার|কবে\s*থেকে|কখন\s*থেকে|কখন\s*শুরু|কবে\s*শুরু|কীভাবে\s*শুরু|কখন\s*প্রথম|কবে\s*প্রথম)/i,
+      /(?:শুরু\s*(?:হয়েছে|হলো|হয়েছিল|কবে|কখন))/i,
       /(kobe\s*theke|kobe\s*shuru|kemon\s*kore\s*shuru|kokhon\s*theke)/i,
     ],
   },
@@ -166,7 +199,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 85,
     patterns: [
       /(where is the pain|where does it hurt|show me where|location of the pain|which part|point to the pain|^where\??$|\bwhere\b)/i,
-      /(কোথায়\s*ব্যথা|কোথায়\s*কষ্ট|জায়গাটা\s*কোথায়|জায়গাটা\s*দেখান|কোন\s*জায়গায়|কোন\s*পাশে|ব্যথাটা\s*কোথায়|^কোথায়\??$|\bকোথায়\b)/i,
+      /(?:কোথায়\s*(?:ব্যথা|কষ্ট|সমস্যা|হচ্ছে)|জায়গাটা\s*কোথায়|জায়গাটা\s*দেখান|কোন\s*জায়গায়|কোন\s*পাশে|ব্যথাটা\s*কোথায়|আঙুল\s*দিয়ে\s*দেখা|^কোথায়\??$|\bকোথায়\b)/i,
       /(kothay\s*batha|kothay\s*betha|kothay\s*kosto|kon\s*jaygay|^kothay\??$|\bkothay\b)/i,
     ],
   },
@@ -177,7 +210,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 85,
     patterns: [
       /(what does the pain feel like|describe the pain|character of the pain|is it sharp|is it dull|is it burning|crushing|throbbing|squeezing)/i,
-      /(ব্যথাটা\s*কেমন|কেমন\s*ধরনের\s*ব্যথা|কেমন\s*ব্যথা|চাপ\s*চাপ|ধারালো|ব্যথার\s*ধরন|ব্যথার\s*প্রকৃতি)/i,
+      /(?:ব্যথাটা\s*কেমন|কেমন\s*ধরনের\s*ব্যথা|কেমন\s*ব্যথা|চাপ\s*চাপ|ধারালো|ব্যথার\s*ধরন|ব্যথার\s*প্রকৃতি|কেমন\s*ধরনের|কেমন\s*লাগে|চেপে\s*বসার)/i,
       /(batha\s*ta\s*kemon|kemon\s*dhoroner|kemon\s*batha|sharp\s*naki\s*dull)/i,
     ],
   },
@@ -188,7 +221,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 85,
     patterns: [
       /(how severe|scale of 1 to 10|rate the pain|out of 10|how bad is it|severity|intensity|\bsevere\b)/i,
-      /(কতটা\s*তীব্র|কেমন\s*তীব্র|১০\s*এর\s*মধ্যে|১\s*থেকে\s*১০|কতটুকু\s*কষ্ট|তীব্রতা|তীব্র\s*ব্যথা|(কতটা|কেমন)\s*(severe|bad|খারাপ))/i,
+      /(?:কতটা\s*তীব্র|কেমন\s*তীব্র|১০\s*এর\s*মধ্যে|১\s*থেকে\s*১০|কতটুকু\s*কষ্ট|তীব্রতা|তীব্র\s*ব্যথা|স্কেলে|(কতটা|কেমন)\s*(?:severe|bad|খারাপ))/i,
       /(koto\s*severe|1\s*theke\s*10|koto\s*tibro|koto\s*beshi|koto\s*kharap)/i,
     ],
   },
@@ -199,7 +232,8 @@ const INTENT_RULES: IntentRule[] = [
     priority: 85,
     patterns: [
       /(does (?:the pain|it) (?:radiate|spread|move|go|travel|shoot)(?:\s+anywhere|\s+to)?|spread to back|spread to arm|spread to jaw|spread to shoulder|does it go anywhere|go anywhere)/i,
-      /(ব্যথা\s*কি\s*অন্য\s*কোথাও\s*যায়|অন্য\s*কোথাও\s*ছড়ায়|পিঠে\s*যায়|ঘাড়ে\s*যায়|হাতে\s*যায়|সেখান\s*থেকে\s*কি\s*অন্য\s*কোথাও|অন্য\s*কোথাও\s*যায়)/i,
+      /(?:ব্যথা\s*কি\s*অন্য\s*কোথাও|ছড়িয়ে\s*(?:পড়ে|যায়|পড়ছে)|অন্য\s*কোথাও\s*(?:ছড়ায়|যায়|পৌঁছায়)|পিঠে\s*যায়|ঘাড়ে\s*যায়|হাতে\s*যায়|সেখান\s*থেকে\s*কি\s*অন্য\s*কোথাও)/i,
+      /\b(?:ছড়ায়|ছড়িয়ে|ছড়িয়ে\s*পড়ে|radiate|spread)\b/i,
       /(onno\s*kothay\s*jay|chorae|chhoray|spread\s*kore|radiation|go\s*anywhere)/i,
     ],
   },
@@ -210,7 +244,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 84,
     patterns: [
       /(what makes (?:it|the (?:pain|discomfort|symptom)|this)? (?:worse|aggravate|aggravated|bad)|what aggravates|does anything worsen|worse on exertion|worse after eating|worse with)/i,
-      /(কিসে(?:\s+(?:ব্যথা|কষ্ট|সমস্যা))?\s*বাড়ে|কিসে\s*বৃদ্ধি|হাঁটলে\s*বাড়ে|খেলে\s*বাড়ে|কাশি\s*দিলে\s*বাড়ে|নড়াচড়া\s*করলে\s*বাড়ে|ওটা\s*কি\s*খাওয়ার\s*পরে\s*বাড়ে)/i,
+      /(?:কিসে(?:\s+(?:ব্যথা|কষ্ট|সমস্যা))?\s*বাড়ে|কিসে\s*বৃদ্ধি|হাঁটলে\s*বাড়ে|খেলে\s*বাড়ে|কাশি\s*দিলে\s*বাড়ে|নড়াচড়া\s*করলে\s*বাড়ে|ওটা\s*কি\s*খাওয়ার\s*পরে\s*বাড়ে|বেড়ে\s*যায়|কী\s*করলে.*?বাড়ে)/i,
       /(kishe\s*bare|kiser\s*por\s*bare|khabar\s*por\s*bare|hatle\s*bare|worse\s*hoy|makes\s*worse)/i,
     ],
   },
@@ -221,7 +255,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 84,
     patterns: [
       /(what makes (?:it|the (?:pain|discomfort|symptom)|this)? (?:better|relieve|relieved|improve)|what eases|does anything relieve|better with rest|better with medicine|does anything ease)/i,
-      /(কিসে(?:\s+(?:একটু|কিছুটা))?\s*(?:আরাম|শান্তি|উপশম)|কিসে(?:\s+(?:ব্যথা|কষ্ট|সমস্যা))?\s*কমে|বিশ্রামে\s*কমে|ওষুধ\s*খেলে\s*কমে)/i,
+      /(?:কিসে(?:\s+(?:একটু|কিছুটা))?\s*(?:আরাম|শান্তি|উপশম)|কিসে(?:\s+(?:ব্যথা|কষ্ট|সমস্যা))?\s*কমে|বিশ্রামে\s*কমে|ওষুধ\s*খেলে\s*কমে|কী\s*করলে.*?কমে|কষ্ট\s*কমে)/i,
       /(kishe\s*kome|aram\s*lage|rest\s*nile\s*kome|better\s*hoy|makes\s*better)/i,
     ],
   },
@@ -265,7 +299,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 82,
     patterns: [
       /(do you have a fever|high temperature|chills|shivering|feverish|cold shakes)/i,
-      /(জ্বর\s*আছে|গা\s*গরম|জ্বর\s*এসেছে|কাঁপুনি\s*দিয়ে\s*জ্বর|তাপমাত্রা|জ্বর\s*কত)/i,
+      /(?:জ্বর|জর|গা\s*গরম|তাপমাত্রা|কাঁপুনি|রাতে\s*ঘাম|fever|temperature)/i,
       /(jwor\s*ache|jor\s*ache|ga\s*gorom|temperature|chills)/i,
     ],
   },
@@ -276,7 +310,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 82,
     patterns: [
       /(do you feel nauseous|nausea|feel like vomiting|sick to your stomach|queasy)/i,
-      /(বমি\s*বমি\s*ভাব|গা\s*গোলানো|বমি\s*ভাব\s*আছে)/i,
+      /(?:বমি\s*ভাব|বমি\s*বমি|গা\s*গোলানো|খাওয়ার\s*রুচি\s*কমে|ক্ষুধা\s*কমে|রুচি\s*কমে)/i,
       /(bomi\s*bomi\s*bhab|bomi\s*bhab|nausea)/i,
     ],
   },
@@ -339,8 +373,8 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'BREATHING',
     priority: 80,
     patterns: [
-      /(shortness of breath|difficulty breathing|breathless|struggling to breathe|dyspnea|gasping)/i,
-      /(শ্বাসকষ্ট\s*আছে|শ্বাস\s*নিতে\s*কষ্ট|দম\s*আটকে|দম\s*ফুরিয়ে)/i,
+      /(shortness of breath|difficulty breathing|breathless|struggling to breathe|dyspnea|gasping|wheezing)/i,
+      /(?:শ্বাসকষ্ট|শ্বাস\s*নিতে\s*কষ্ট|দম\s*আটকে|দম\s*ফুরিয়ে|বুকে\s*চাপ\s*অনুভব|হাঁপিয়ে)/i,
       /(shashkosto|shash\s*nitethe\s*kosto|breathless|dyspnea)/i,
     ],
   },
@@ -368,8 +402,8 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'DIZZINESS',
     priority: 80,
     patterns: [
-      /(dizzy|lightheaded|room spinning|vertigo|unsteady)/i,
-      /(মাথা\s*ঘোরে|মাথা\s*চক্কর|মাথা\s*ঘুরছে)/i,
+      /(dizzy|lightheaded|room spinning|vertigo|unsteady|fatigue|tired)/i,
+      /(?:মাথা\s*ঘোরে|মাথা\s*ঘোরা|মাথা\s*চক্কর|মাথা\s*ঘুরছে|অতিরিক্ত\s*ক্লান্তি|ক্লান্তি\s*লাগছে)/i,
       /(matha\s*ghore|dizzy|lightheaded)/i,
     ],
   },
@@ -401,9 +435,9 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'MEDICATION',
     priority: 78,
     patterns: [
-      /(what medications do you take|any regular medicines|prescriptions|any pills|taking any tablets)/i,
-      /(নিয়মিত\s*কোনো\s*ওষুধ\s*খান|কী\s*কী\s*ওষুধ|ওষুধের\s*নাম|প্রেসক্রিপশন|কী\s*ওষুধ)/i,
-      /(kono\s*osudh\s*khan|regular\s*medicine|ki\s*ki\s*osudh)/i,
+      /(what medications do you take|any regular medicines|prescriptions|any pills|taking any tablets|any inhalers)/i,
+      /(?:নিয়মিত\s*কোনো\s*ওষুধ|কী\s*কী\s*ওষুধ|ওষুধের\s*নাম|প্রেসক্রিপশন|কী\s*ওষুধ|ইনহেলার|ওষুধ\s*খান|ওষুধ.*ব্যবহার)/i,
+      /(kono\s*osudh\s*khan|regular\s*medicine|ki\s*ki\s*osudh|inhaler)/i,
     ],
   },
 
@@ -412,7 +446,8 @@ const INTENT_RULES: IntentRule[] = [
     intent: 'ALLERGY',
     priority: 78,
     patterns: [
-      /(any allergies|allergic to any medications|food allergies|drug allergy)/i,
+      /(any allergies|allergic to any medications|food allergies|drug allergy|allergic)/i,
+      /(?:অ্যালার্জি|এলার্জি|allergy|allergic)/i,
       /(কোনো\s*অ্যালার্জি|ওষুধে\s*অ্যালার্জি|খাবারে\s*অ্যালার্জি|এলার্জি\s*আছে)/i,
       /(kono\s*allergy\s*ache|allergic\s*kina|allergy)/i,
     ],
@@ -435,7 +470,7 @@ const INTENT_RULES: IntentRule[] = [
     priority: 77,
     patterns: [
       /(do you smoke|how many cigarettes|pack years|tobacco|do you use tobacco)/i,
-      /(ধূমপান|সিগারেট|বিড়ি|জর্দা|গুল|তামাক|তামাকের|ধূমপানের)/i,
+      /(?:ধূমপান|সিগারেট|বিড়ি|জর্দা|গুল|তামাক|তামাকের|ধূমপানের|তামাকজাতীয়)/i,
       /(dhumpon\s*koren|cigarette\s*khan|smoke\s*koren)/i,
     ],
   },
@@ -559,8 +594,9 @@ export class ClinicalQuestionIntentDetector {
     currentContextTopic?: string
   ): IntentDetectionResult {
     const rawTrimmed = question.trim();
-    const language = detectLanguage(rawTrimmed);
-    const clauses = splitIntoClauses(rawTrimmed);
+    const normalizedText = normalizeInputText(rawTrimmed);
+    const language = detectLanguage(normalizedText);
+    const clauses = splitIntoClauses(normalizedText);
 
     const detectedIntentsSet = new Set<ClinicalIntent>();
     let isDirectDiagnosisQuery = false;
@@ -569,7 +605,7 @@ export class ClinicalQuestionIntentDetector {
     // 1. Analyze whole text for high-priority rules
     for (const rule of INTENT_RULES) {
       for (const pattern of rule.patterns) {
-        if (pattern.test(rawTrimmed)) {
+        if (pattern.test(rawTrimmed) || pattern.test(normalizedText)) {
           detectedIntentsSet.add(rule.intent);
           if (rule.intent === 'DIRECT_DIAGNOSIS_QUERY') {
             isDirectDiagnosisQuery = true;

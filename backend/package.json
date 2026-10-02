@@ -1,6 +1,6 @@
 {
   "name": "techboloy-med-backend",
-  "version": "1.0.0",
+  "version": "2.3.1",
   "private": true,
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",

@@ -135,34 +135,43 @@ export class TruthLayerBuilder {
     else if (soc.includes('single') || soc.includes('unmarried')) maritalStatus = 'Single';
     else if (soc.includes('widow')) maritalStatus = 'Widowed';
 
-    // 2. Duration & Onset
+    // 2. Duration & Onset (Supports Bengali Numerals & Units)
     let durationEn = 'for the past few days';
     let durationBn = 'কয়েকদিন ধরে';
-    const durMatch = (sym + ' ' + cc).match(/(\d+)\s*(days?|hours?|weeks?|months?)/i);
+
+    const bnToEnDigits = (s: string) =>
+      s.replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d)));
+    const enToBnDigits = (s: string | number) =>
+      String(s).replace(/[0-9]/g, (d) => '০১২৩৪৫৬৭৮৯'.charAt(parseInt(d, 10)));
+
+    const combinedText = (sym + ' ' + cc);
+    const normalizedDigits = bnToEnDigits(combinedText);
+    const durMatch = normalizedDigits.match(/(\d+)\s*(days?|hours?|weeks?|months?|দিন|ঘণ্টা|ঘন্টা|সপ্তাহ|মাস)/i);
     if (durMatch) {
       const num = durMatch[1];
       const unit = durMatch[2].toLowerCase();
-      if (unit.startsWith('hour')) {
+      const numBn = enToBnDigits(num);
+      if (unit.startsWith('hour') || unit.includes('ঘণ্টা') || unit.includes('ঘন্টা')) {
         durationEn = `${num} hours`;
-        durationBn = `${num} ঘণ্টা`;
-      } else if (unit.startsWith('day')) {
+        durationBn = `${numBn} ঘণ্টা`;
+      } else if (unit.startsWith('day') || unit.includes('দিন')) {
         durationEn = `${num} days`;
-        durationBn = `${num} দিন`;
-      } else if (unit.startsWith('week')) {
+        durationBn = `${numBn} দিন`;
+      } else if (unit.startsWith('week') || unit.includes('সপ্তাহ')) {
         durationEn = `${num} weeks`;
-        durationBn = `${num} সপ্তাহ`;
-      } else if (unit.startsWith('month')) {
+        durationBn = `${numBn} সপ্তাহ`;
+      } else if (unit.startsWith('month') || unit.includes('মাস')) {
         durationEn = `${num} months`;
-        durationBn = `${num} মাস`;
+        durationBn = `${numBn} মাস`;
       }
     }
 
     let onsetEn = `Started ${durationEn} ago.`;
     let onsetBn = `এটা প্রায় ${durationBn} আগে শুরু হয়েছে।`;
-    if (sym.includes('yesterday')) {
+    if (sym.includes('yesterday') || combinedText.includes('গতকাল')) {
       onsetEn = 'Started yesterday.';
       onsetBn = 'এটা গতকাল থেকে শুরু হয়েছে।';
-    } else if (sym.includes('sudden')) {
+    } else if (sym.includes('sudden') || combinedText.includes('হঠাৎ')) {
       onsetEn = 'It started suddenly.';
       onsetBn = 'হঠাৎ করেই এটা তীব্রভাবে শুরু হয়েছিল।';
     }
@@ -170,6 +179,10 @@ export class TruthLayerBuilder {
     // 3. Location
     let locationEn = 'In the affected area.';
     let locationBn = 'কষ্টের জায়গায় অনুভূত হচ্ছে।';
+    if (combinedText.includes('চোখের পেছনে') || combinedText.includes('সারা শরীরে') || combinedText.includes('behind my eyes') || combinedText.includes('body ache')) {
+      locationEn = 'Intense pain all over my body, particularly severe aching behind my eyes.';
+      locationBn = 'সারা শরীরে তীব্র ব্যথা এবং বিশেষ করে দুই চোখের পেছনের দিকে অসহ্য যন্ত্রণা হচ্ছে।';
+    } else
     if (sym.includes('central chest') || sym.includes('center of my chest') || sym.includes('retrosternal') || cc.toLowerCase().includes('chest')) {
       locationEn = 'Right in the center of my chest, behind the breastbone.';
       locationBn = 'বুকের ঠিক মাঝখানে, খাঁচার পেছনে চাপ অনুভব করছি।';
@@ -191,6 +204,10 @@ export class TruthLayerBuilder {
     // 4. Character
     let characterEn = 'It feels uncomfortable and heavy.';
     let characterBn = 'এটা বেশ অস্বস্তিকর এবং ভারী অনুভূতি।';
+    if (combinedText.includes('অসহ্য যন্ত্রণা') || combinedText.includes('যন্ত্রণা') || combinedText.includes('breakbone')) {
+      characterEn = 'Severe agonizing pain deep in my muscles and joints, as if my bones are breaking.';
+      characterBn = 'সারা শরীরের মাংসপেশি ও হাড়ে তীব্র কামড়ানো অসহ্য যন্ত্রণা, যেন ভেঙে পড়ার মতো কষ্ট।';
+    } else
     if (sym.includes('pressure') || sym.includes('tightness') || sym.includes('crushing') || sym.includes('squeezing') || sym.includes('heavy')) {
       characterEn = 'It feels like a heavy pressure or tight squeezing, as if something heavy is sitting on my chest.';
       characterBn = 'মনে হচ্ছে বুকের ওপর ভারী কিছু বসে আছে, চেপে ধরার মতো এক অসহ্য অনুভূতি।';
@@ -258,7 +275,7 @@ export class TruthLayerBuilder {
     }
 
     // 8. Associated Symptoms
-    const hasFever = (sym.includes('fever') || cc.toLowerCase().includes('fever')) && !sym.includes('no fever');
+    const hasFever = (sym.includes('fever') || cc.toLowerCase().includes('fever') || combinedText.includes('জ্বর') || combinedText.includes('জর')) && !sym.includes('no fever') && !sym.includes('জ্বর নেই');
     const hasNausea = sym.includes('nausea') && !sym.includes('no nausea');
     const hasVomiting = (sym.includes('vomiting') || sym.includes('vomit')) && !sym.includes('no vomiting');
     const hasDiarrhea = sym.includes('diarrhea') || sym.includes('loose stool');

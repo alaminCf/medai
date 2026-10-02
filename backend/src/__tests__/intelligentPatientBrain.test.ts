@@ -251,8 +251,51 @@ async function runIntelligentBrainTestSuite() {
     t35.intents.includes("UNRELATED_QUERY") && (t35.message.includes("চিকিৎসা") || t35.message.includes("অসুস্থ") || t35.message.includes("সম্পর্ক")),
     `Response: "${t35.message}"`);
 
+
+  // ── Dengue Fever Case Tests (Bengali Chief Complaint & Colloquial Prompts) ──
+  const dengueCase: PatientCaseContext = {
+    id: "dengue-nusrat-46",
+    patientName: "নুসরাত জাহান",
+    patientAge: 46,
+    patientGender: "Female",
+    chiefComplaint: "আমার ৪ দিন ধরে তীব্র জ্বর, চোখের পেছনে ব্যথা এবং সারা শরীরে অসহ্য যন্ত্রণা হচ্ছে।",
+    personality: "concerned",
+    language: "bn",
+  };
+  const dengueSessionId = "dengue_session_" + Date.now();
+
+  // 36. Colloquial Age: "তোমার এজ কত"
+  const t36 = await StatefulPatientEngine.processTurn(dengueSessionId, dengueCase, "তোমার এজ কত");
+  assert(36, "Colloquial Age: তোমার এজ কত",
+    t36.intents.includes("AGE") && (t36.message.includes("৪৬") || t36.message.includes("46")),
+    `Response: "${t36.message}"`);
+
+  // 37. Colloquial Duration: "কতদিন যাবৎ তোমার এই সমস্যা হচ্ছে"
+  const t37 = await StatefulPatientEngine.processTurn(dengueSessionId, dengueCase, "কতদিন যাবৎ তোমার এই সমস্যা হচ্ছে");
+  assert(37, "Colloquial Duration: কতদিন যাবৎ তোমার এই সমস্যা হচ্ছে",
+    t37.intents.includes("DURATION") && t37.message.includes("৪ দিন"),
+    `Response: "${t37.message}"`);
+
+  // 38. Decomposed Unicode Location: "ব্যথাটা ঠিক কোথায় হচ্ছে আঙুল দিয়ে দেখাবেন?"
+  const t38 = await StatefulPatientEngine.processTurn(dengueSessionId, dengueCase, "ব্যথাটা ঠিক কোথায় হচ্ছে আঙুল দিয়ে দেখাবেন?");
+  assert(38, "Decomposed Unicode Location: ব্যথাটা ঠিক কোথায় হচ্ছে আঙুল দিয়ে দেখাবেন?",
+    t38.intents.includes("LOCATION") && (t38.message.includes("চোখের পেছনে") || t38.message.includes("সারা শরীরে")),
+    `Response: "${t38.message}"`);
+
+  // 39. Decomposed Unicode Radiation: "ব্যথা কি অন্য কোথাও যেমন হাত, গলা বা পিঠে ছড়িয়ে পড়ে?"
+  const t39 = await StatefulPatientEngine.processTurn(dengueSessionId, dengueCase, "ব্যথা কি অন্য কোথাও যেমন হাত, গলা বা পিঠে ছড়িয়ে পড়ে?");
+  assert(39, "Decomposed Unicode Radiation: ব্যথা কি অন্য কোথাও যেমন হাত, গলা বা পিঠে ছড়িয়ে পড়ে?",
+    t39.intents.includes("RADIATION") && t39.message.includes("ছড়ায় না"),
+    `Response: "${t39.message}"`);
+
+  // 40. Decomposed Unicode Onset: "আপনার এই সমস্যা কবে থেকে শুরু হয়েছে?"
+  const t40 = await StatefulPatientEngine.processTurn(dengueSessionId, dengueCase, "আপনার এই সমস্যা কবে থেকে শুরু হয়েছে?");
+  assert(40, "Decomposed Unicode Onset: আপনার এই সমস্যা কবে থেকে শুরু হয়েছে?",
+    t40.intents.includes("ONSET") && (t40.message.includes("৪ দিন আগে") || t40.message.includes("কয়েকদিন আগে")),
+    `Response: "${t40.message}"`);
+
   console.log("\n════════════════════════════════════════════════════════════════════");
-  console.log(`  INTELLIGENT BRAIN TEST RESULTS: ${passed} PASSED / ${failed} FAILED (TOTAL 35)`);
+  console.log(`  INTELLIGENT BRAIN TEST RESULTS: ${passed} PASSED / ${failed} FAILED (TOTAL 40)`);
   console.log("════════════════════════════════════════════════════════════════════\n");
 
   if (failed > 0) {
