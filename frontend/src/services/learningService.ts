@@ -44,11 +44,7 @@ export const learningService = {
   },
 
   async uploadMaterial(formData: FormData): Promise<StudyMaterial> {
-    const res = await api.post('/learning/materials/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const res = await api.post('/learning/materials/upload', formData);
     return res.data.material;
   },
 
@@ -495,9 +491,7 @@ export const learningService = {
   // DUAL-MODE LEARNING HUB & CLASSROOM SYNC
   // ────────────────────────────────────────────────────────
   async generateHubFromUpload(formData: FormData): Promise<any> {
-    const res = await api.post('/learning/hub/generate-from-upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/learning/hub/generate-from-upload', formData);
     return res.data;
   },
 
@@ -507,9 +501,7 @@ export const learningService = {
   },
 
   async createStudyPlanFromClassMaterial(formData: FormData): Promise<any> {
-    const res = await api.post('/adaptive/study-plan/from-class-material', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const res = await api.post('/adaptive/study-plan/from-class-material', formData);
     return res.data;
   },
 };

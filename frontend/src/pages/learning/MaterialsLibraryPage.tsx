@@ -79,7 +79,8 @@ export default function MaterialsLibraryPage() {
       // Navigate to reader
       navigate(`/learning/materials/${newMaterial.id}`);
     } catch (err: any) {
-      setUploadError(err.response?.data?.error || 'Failed to upload document.');
+      console.error('Upload document error:', err);
+      setUploadError(err.response?.data?.error || err.message || 'Failed to upload document. Please ensure the file is an image or document.');
     } finally {
       setIsUploading(false);
     }

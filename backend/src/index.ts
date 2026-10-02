@@ -152,9 +152,15 @@ app.use('/api/*', (_req, res) => {
 });
 
 // Global error handler
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'File size exceeds allowed limit (Max 25MB).' });
+  }
+  if (err?.message && (err.message.includes('Multipart') || err.message.includes('boundary') || err.message.includes('part'))) {
+    return res.status(400).json({ error: 'Invalid multipart upload format: ' + err.message });
+  }
+  res.status(500).json({ error: err?.message || 'Internal server error' });
 });
 
 if (require.main === module) {

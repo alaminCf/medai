@@ -8,11 +8,16 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Attach token to every request
+// Attach token to every request and ensure FormData uploads set dynamic boundary
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('techboloy_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // When sending FormData, delete Content-Type so the browser automatically sets
+  // multipart/form-data WITH the correct boundary parameter!
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
   }
   return config;
 });

@@ -217,7 +217,7 @@ export class SpeechRecognitionService {
           formData.append('audio', audioBlob, 'speech.webm');
 
           const response = await api.post(`/sessions/${sessionId}/voice/transcribe`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
+            
           });
 
           resolve(response.data.transcription || '');
