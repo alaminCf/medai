@@ -62,9 +62,20 @@ export const learningService = {
   },
 
   // ────────────────────────────────────────────────────────
-  // Smart Notes
+  // Smart Medical Notes & Knowledge Workspace
   // ────────────────────────────────────────────────────────
-  async getNotes(filters?: { subject?: string; search?: string }): Promise<StudyNote[]> {
+  async getNotes(filters?: {
+    subject?: string;
+    topic?: string;
+    noteType?: string;
+    materialId?: string;
+    isPinned?: boolean;
+    isFavorite?: boolean;
+    isArchived?: boolean;
+    search?: string;
+    tag?: string;
+    sortBy?: string;
+  }): Promise<StudyNote[]> {
     const res = await api.get('/notes', { params: filters });
     return res.data.notes;
   },
@@ -81,13 +92,18 @@ export const learningService = {
     topic?: string;
     tags?: string;
     materialId?: string;
-    sourceType?: 'PERSONAL' | 'AI_GENERATED' | 'MATERIAL_BASED';
+    noteType?: any;
+    sourceType?: any;
+    summary?: string;
+    contentFormat?: string;
+    isPinned?: boolean;
+    isFavorite?: boolean;
   }): Promise<StudyNote> {
     const res = await api.post('/notes', data);
     return res.data.note;
   },
 
-  async updateNote(id: string, data: Partial<StudyNote>): Promise<StudyNote> {
+  async updateNote(id: string, data: Partial<StudyNote> & { createVersionSnapshot?: boolean; expectedVersion?: number }): Promise<StudyNote> {
     const res = await api.put(`/notes/${id}`, data);
     return res.data.note;
   },
@@ -96,8 +112,36 @@ export const learningService = {
     await api.delete(`/notes/${id}`);
   },
 
-  async performNoteAIAction(id: string, action: 'improve' | 'summarize' | 'explain' | 'flashcards' | 'mcqs', customPrompt?: string): Promise<any> {
-    const res = await api.post(`/notes/${id}/ai-action`, { action, customPrompt });
+  async restoreNoteVersion(id: string, versionNumber: number): Promise<StudyNote> {
+    const res = await api.post(`/notes/${id}/versions/${versionNumber}/restore`);
+    return res.data.note;
+  },
+
+  async checkDuplicateNote(title: string, topic?: string): Promise<{ exists: boolean; existingNote?: StudyNote }> {
+    const res = await api.post('/notes/check-duplicate', { title, topic });
+    return res.data;
+  },
+
+  async askMyNotes(question: string): Promise<{ answer: string; matchedNotes: Array<{ id: string; title: string; subject: string; topic?: string }> }> {
+    const res = await api.post('/notes/ask-my-notes', { question });
+    return res.data;
+  },
+
+  async performNoteAIAction(
+    id: string,
+    action: string,
+    options?: {
+      customPrompt?: string;
+      selectedText?: string;
+      useBroaderKnowledge?: boolean;
+    }
+  ): Promise<any> {
+    const res = await api.post(`/notes/${id}/ai-action`, {
+      action,
+      customPrompt: options?.customPrompt,
+      selectedText: options?.selectedText,
+      useBroaderKnowledge: options?.useBroaderKnowledge
+    });
     return res.data;
   },
 

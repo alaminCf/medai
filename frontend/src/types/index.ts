@@ -550,7 +550,19 @@ export interface StudyMaterial {
   };
 }
 
-export type NoteSourceType = 'PERSONAL' | 'AI_GENERATED' | 'MATERIAL_BASED';
+export type NoteSourceType = 'PERSONAL' | 'AI_GENERATED' | 'MATERIAL_BASED' | 'VIVA' | 'CLINICAL';
+export type NoteType = 'PERSONAL' | 'AI_GENERATED' | 'MATERIAL_BASED' | 'VIVA' | 'CLINICAL';
+
+export interface NoteVersion {
+  id: string;
+  noteId: string;
+  versionNumber: number;
+  title: string;
+  content: string;
+  summary?: string | null;
+  wordCount: number;
+  createdAt: string;
+}
 
 export interface StudyNote {
   id: string;
@@ -560,17 +572,45 @@ export interface StudyNote {
     id: string;
     title: string;
     subject: string;
+    topic?: string;
+    fileType?: string;
+    originalFileName?: string;
   } | null;
   title: string;
   content: string;
   subject: string;
-  topic?: string;
-  tags?: string;
+  topic?: string | null;
+  tags?: string | null;
   sourceType: NoteSourceType;
+  noteType?: NoteType;
+  summary?: string | null;
+  contentFormat?: string;
   isPinned: boolean;
   isFavorite: boolean;
+  isArchived?: boolean;
+  wordCount?: number;
+  readingTime?: number;
+  version?: number;
+  status?: string;
+  lastOpenedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  versions?: NoteVersion[];
+  relatedNotes?: Array<{
+    id: string;
+    title: string;
+    subject: string;
+    topic?: string;
+    noteType?: string;
+    updatedAt: string;
+  }>;
+  flashcardDecks?: Array<{ id: string; title: string; createdAt: string; _count?: { flashcards: number } }>;
+  questionBanks?: Array<{ id: string; title: string; createdAt: string; _count?: { questions: number } }>;
+  _count?: {
+    versions?: number;
+    flashcardDecks?: number;
+    questionBanks?: number;
+  };
 }
 
 export type TutorMode = 'EXPLAIN' | 'TEACH' | 'QUIZ_ME' | 'VIVA_ME' | 'REVISE';

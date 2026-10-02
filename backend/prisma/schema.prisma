@@ -538,24 +538,52 @@ model StudyMaterial {
 }
 
 model StudyNote {
-  id           String         @id @default(uuid())
-  userId       String
-  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  materialId   String?
-  material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
-  title        String
-  content      String
-  subject      String
-  topic        String?
-  tags         String?
-  sourceType   String         @default("PERSONAL") // "PERSONAL", "AI_GENERATED", "MATERIAL_BASED"
-  isPinned     Boolean        @default(false)
-  isFavorite   Boolean        @default(false)
-  reviewStatus String         @default("APPROVED")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId    String?
+  material      StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  title         String
+  content       String
+  subject       String
+  topic         String?
+  tags          String?
+  sourceType    String         @default("PERSONAL") // "PERSONAL", "AI_GENERATED", "MATERIAL_BASED", "VIVA", "CLINICAL"
+  noteType      String         @default("PERSONAL") // "PERSONAL", "MATERIAL_BASED", "AI_GENERATED", "VIVA", "CLINICAL"
+  contentFormat String         @default("markdown") // "markdown", "blocks"
+  summary       String?
+  isPinned      Boolean        @default(false)
+  isFavorite    Boolean        @default(false)
+  isArchived    Boolean        @default(false)
+  wordCount     Int            @default(0)
+  readingTime   Int            @default(1)
+  version       Int            @default(1)
+  status        String         @default("PUBLISHED") // "DRAFT", "PUBLISHED", "ARCHIVED"
+  lastOpenedAt  DateTime?
+  sourceNoteIds String?
+  reviewStatus  String         @default("APPROVED")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  versions       NoteVersion[]
+  flashcardDecks FlashcardDeck[]
+  questionBanks  QuestionBank[]
 
   @@map("study_notes")
+}
+
+model NoteVersion {
+  id            String    @id @default(uuid())
+  noteId        String
+  note          StudyNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  title         String
+  content       String
+  summary       String?
+  wordCount     Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@map("note_versions")
 }
 
 model TutorConversation {
@@ -594,6 +622,8 @@ model FlashcardDeck {
   user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   materialId   String?
   material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  sourceNoteId String?
+  sourceNote   StudyNote?     @relation(fields: [sourceNoteId], references: [id], onDelete: SetNull)
   title        String
   subject      String
   topic        String?
@@ -645,6 +675,8 @@ model QuestionBank {
   userId       String?
   materialId   String?
   material     StudyMaterial? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  sourceNoteId String?
+  sourceNote   StudyNote?     @relation(fields: [sourceNoteId], references: [id], onDelete: SetNull)
   subject      String
   topic        String?
   title        String
