@@ -91,7 +91,25 @@ app.get('/api/debug', async (_req, res) => {
 });
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'techboloy-med-backend', version: '2.3.1-bengali-nfc-colloquial-fix', timestamp: new Date().toISOString() });
+  const hasGemini = Boolean(
+    process.env.GEMINI_API_KEY ||
+    process.env.Gemini_api_key ||
+    process.env.gemini_api_key ||
+    Object.entries(process.env).find(([k]) => k.toLowerCase() === 'gemini_api_key')?.[1]
+  );
+  const hasOpenAI = Boolean(
+    process.env.OPENAI_API_KEY &&
+    !process.env.OPENAI_API_KEY.includes('placeholder') &&
+    process.env.OPENAI_API_KEY.startsWith('sk-')
+  );
+  res.json({
+    status: 'ok',
+    service: 'techboloy-med-backend',
+    version: '2.4.0-gemini-live-brain',
+    aiProvider: hasGemini ? 'gemini' : hasOpenAI ? 'openai' : 'smart-clinical-engine',
+    geminiActive: hasGemini,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // API Routes
