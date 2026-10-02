@@ -1403,10 +1403,13 @@ Subject: ${cleanSub}
       
       if (cleanLines.length > 0) {
         bestTopic = cleanLines[0];
-      } else if (filename) {
-        bestTopic = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      } else {
-        bestTopic = bestSubject + ' Lecture Notes';
+      }
+      if (!bestTopic || bestTopic.includes('ERROR') || /([a-zA-Z])\1{4,}/.test(bestTopic) || bestTopic.length < 3) {
+        if (filename && filename.trim() && filename !== 'Auto-Detect Subject') {
+          bestTopic = filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        } else {
+          bestTopic = bestSubject + ' Lecture Notes';
+        }
       }
     }
 
@@ -1424,9 +1427,22 @@ Subject: ${cleanSub}
     difficulty?: string;
   }): Promise<DailyHubPackage> {
     const { extractedText, difficulty = 'medium' } = params;
-    const detected = this.detectMedicalSubjectAndTopic(extractedText);
-    const subject = params.subject && params.subject !== 'General Medicine' ? params.subject : detected.subject;
-    const topic = params.topic && params.topic.trim() ? params.topic.trim() : detected.topic;
+    const detected = this.detectMedicalSubjectAndTopic(extractedText, params.title);
+    const subject = (params.subject && params.subject !== 'General Medicine' && params.subject !== 'Auto-Detect Subject') 
+      ? params.subject 
+      : detected.subject;
+    
+    let topic = (params.topic && params.topic.trim() && params.topic !== 'Auto-Detect Subject') 
+      ? params.topic.trim() 
+      : detected.topic;
+
+    if (!topic || topic.includes('ERROR') || /([a-zA-Z])\1{4,}/.test(topic) || topic.length < 3) {
+      if (params.title && params.title.trim()) {
+        topic = params.title.trim();
+      } else {
+        topic = (subject !== 'General Medicine' ? subject : 'Clinical Medicine') + ' Lecture Notes';
+      }
+    }
     const title = params.title || (topic + ' — Class Learning Hub');
 
     const summary = await this.generateSummary({

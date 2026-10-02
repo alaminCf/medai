@@ -222,8 +222,12 @@ export default function LearningHubPage() {
       const formData = new FormData();
       if (uploadFile) formData.append('file', uploadFile);
       if (uploadTitle) formData.append('title', uploadTitle);
-      if (uploadSubject) formData.append('subject', uploadSubject);
-      if (uploadTopic) formData.append('topic', uploadTopic);
+      if (uploadSubject && uploadSubject !== 'Auto-Detect Subject') {
+        formData.append('subject', uploadSubject);
+      }
+      if (uploadTopic && uploadTopic.trim()) {
+        formData.append('topic', uploadTopic.trim());
+      }
 
       const res = await learningService.generateHubFromUpload(formData);
 

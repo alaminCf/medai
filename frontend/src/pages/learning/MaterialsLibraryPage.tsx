@@ -65,8 +65,12 @@ export default function MaterialsLibraryPage() {
       const formData = new FormData();
       formData.append('file', uploadFile);
       formData.append('title', uploadTitle || uploadFile.name.replace(/\.[^/.]+$/, ''));
-      formData.append('subject', uploadSubject);
-      if (uploadTopic) formData.append('topic', uploadTopic);
+      if (uploadSubject && uploadSubject !== 'Auto-Detect Subject') {
+        formData.append('subject', uploadSubject);
+      }
+      if (uploadTopic && uploadTopic.trim()) {
+        formData.append('topic', uploadTopic.trim());
+      }
       if (uploadSubtopic) formData.append('subtopic', uploadSubtopic);
       if (uploadTags) formData.append('tags', uploadTags);
 
