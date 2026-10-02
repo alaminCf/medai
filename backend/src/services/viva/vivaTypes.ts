@@ -120,6 +120,10 @@ export interface AnswerAssessmentResult {
   relevanceDepth: 'Shallow' | 'Good' | 'Detailed & Analytical';
   examinerRemark: string;
   recommendedNextAction: NextQuestionStrategyType;
+  isStudentQuery?: boolean;
+  studentQueryType?: 'EXPLANATION_REQUEST' | 'CLARIFICATION' | 'AMNESIA_HELP' | 'SPECIFIC_QUESTION';
+  directExplanationToStudent?: string;
+  followUpGuidedQuestion?: string;
 }
 
 export interface ConceptMasteryState {

@@ -12,6 +12,7 @@ export interface AdaptiveVivaQuestionState {
   difficulty: string;
   focusConcept: string;
   targetConcept?: string;
+  prefix?: string;
 }
 
 export interface VivaTurnEvaluation {
@@ -107,7 +108,8 @@ export class AdaptiveVivaService {
           topic,
           difficulty: nextQ.difficulty,
           focusConcept: nextQ.targetConcept,
-          targetConcept: nextQ.targetConcept
+          targetConcept: nextQ.targetConcept,
+          prefix: result.examinerFeedback
         }
       : null;
 

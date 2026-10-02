@@ -19,6 +19,15 @@ export class ExaminerResponseEngine {
   }): { feedback: string; responseType: ExaminerResponseType } {
     const { assessment, style, currentQuestion, targetConcept } = params;
 
+    // 0. Student Query / Explanation Request: Directly deliver the medical explanation!
+    if (assessment.isStudentQuery && assessment.directExplanationToStudent) {
+      let prefix = assessment.directExplanationToStudent;
+      if (style === 'FRIENDLY_TEACHER' && !prefix.startsWith('কোনো') && !prefix.startsWith('Of course')) {
+        prefix = `Of course! ${prefix}`;
+      }
+      return { feedback: prefix, responseType: 'ENCOURAGE' };
+    }
+
     // 1. Misconception response: directly address the misconception without being rude
     if (assessment.detectedMisconceptions.length > 0) {
       const misc = assessment.detectedMisconceptions[0];

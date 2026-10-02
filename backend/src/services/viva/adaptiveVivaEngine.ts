@@ -397,14 +397,23 @@ export class AdaptiveVivaEngine {
       state.currentConcept = nextConcept.name;
 
       // 7. Dynamic Question Generation with NO REPETITION GUARANTEE
-      let candidate = ExaminerResponseEngine.generateNextAdaptiveQuestion({
-        strategy: strategyChosen,
-        concept: nextConcept,
-        assessment,
-        turnNumber: currentTurnNumber + 1,
-        style: state.examinerStyle,
-        clinicalScenario: blueprint.clinicalScenarios[0]?.scenario
-      });
+      let candidate: { questionText: string; questionType: VivaQuestionType; expectedConcepts: string[] };
+      if (assessment.isStudentQuery && assessment.followUpGuidedQuestion) {
+        candidate = {
+          questionText: assessment.followUpGuidedQuestion,
+          questionType: 'Mechanism',
+          expectedConcepts: nextConcept.expectedConcepts
+        };
+      } else {
+        candidate = ExaminerResponseEngine.generateNextAdaptiveQuestion({
+          strategy: strategyChosen,
+          concept: nextConcept,
+          assessment,
+          turnNumber: currentTurnNumber + 1,
+          style: state.examinerStyle,
+          clinicalScenario: blueprint.clinicalScenarios[0]?.scenario
+        });
+      }
 
       // Semantic Duplicate Check with iterative rotation
       let simCheck = QuestionSimilarityService.isQuestionDuplicate(

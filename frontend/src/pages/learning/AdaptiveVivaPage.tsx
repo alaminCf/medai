@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   Mic,
+  Sparkles,
   MicOff,
   CheckCircle,
   ArrowRight,
@@ -900,7 +901,7 @@ export const AdaptiveVivaPage: React.FC = () => {
 
               {/* Repeat speech button */}
               <button
-                onClick={() => speakQuestion(currentQuestion.question)}
+                onClick={() => speakQuestion(currentQuestion.prefix ? `${currentQuestion.prefix} ${currentQuestion.question}` : currentQuestion.question)}
                 disabled={isSpeaking || isSubmitting}
                 className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 border border-slate-700 flex items-center gap-1.5 transition disabled:opacity-50"
               >
@@ -908,6 +909,19 @@ export const AdaptiveVivaPage: React.FC = () => {
                 <span className="hidden sm:inline">Repeat</span>
               </button>
             </div>
+
+            {/* Examiner Teaching / Direct Explanation Callout */}
+            {currentQuestion.prefix && (
+              <div className="mt-3 p-3.5 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-100 text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 shadow-inner">
+                <Sparkles className="w-4 h-4 text-teal-300 flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-teal-300 text-[10px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <span>Examiner Guidance &amp; Explanation / শিক্ষকের ব্যাখ্যা</span>
+                  </div>
+                  <div className="text-slate-100 leading-relaxed font-normal">{currentQuestion.prefix}</div>
+                </div>
+              </div>
+            )}
 
             {/* Current Question Text */}
             <div className="mt-3 text-lg sm:text-2xl font-bold leading-relaxed text-slate-100">
