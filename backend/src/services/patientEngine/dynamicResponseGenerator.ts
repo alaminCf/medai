@@ -81,12 +81,17 @@ STRICT PATIENT ROLEPLAY RULES:
     prompt: string,
     studentMessage: string
   ): Promise<string | null> {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey =
+      process.env.GEMINI_API_KEY ||
+      process.env.Gemini_api_key ||
+      process.env.gemini_api_key ||
+      Object.entries(process.env).find(([k]) => k.toLowerCase() === 'gemini_api_key')?.[1];
+
     if (!apiKey || apiKey.includes('placeholder') || apiKey.length < 10) {
       return null;
     }
 
-    const models = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
+    const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash'];
     for (const model of models) {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const controller = new AbortController();
@@ -118,7 +123,8 @@ STRICT PATIENT ROLEPLAY RULES:
 
         if (res.ok) {
           const data: any = await res.json();
-          const candidate = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          const parts = data?.candidates?.[0]?.content?.parts || [];
+          const candidate = parts.map((p: any) => p.text).filter(Boolean).join(' ').trim();
           if (candidate && candidate.length > 2) {
             return candidate;
           }
