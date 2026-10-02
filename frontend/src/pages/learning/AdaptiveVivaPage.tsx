@@ -146,6 +146,8 @@ export const AdaptiveVivaPage: React.FC = () => {
   // Audio / Speech Recognition (STT)
   const [isRecording, setIsRecording] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [speechLanguage, setSpeechLanguage] = useState<'en-US' | 'bn-BD'>('en-US');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const recognitionRef = useRef<any>(null);
 
   // Audio / Text-to-Speech (TTS)
@@ -176,34 +178,6 @@ export const AdaptiveVivaPage: React.FC = () => {
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRecognition) {
       setSpeechSupported(true);
-      const recog = new SpeechRecognition();
-      recog.continuous = true;
-      recog.interimResults = true;
-      recog.lang = 'en-US';
-
-      recog.onresult = (event: any) => {
-        let transcript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          transcript += event.results[i][0].transcript;
-        }
-        if (transcript) {
-          setStudentAnswer((prev) => {
-            // Append or replace if currently empty
-            return prev.trim() ? prev + ' ' + transcript : transcript;
-          });
-        }
-      };
-
-      recog.onerror = (err: any) => {
-        console.warn('Speech recognition error:', err);
-        setIsRecording(false);
-      };
-
-      recog.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recog;
     }
 
     // Network connectivity listener
@@ -499,25 +473,92 @@ export const AdaptiveVivaPage: React.FC = () => {
     }
   };
 
-  // 8. Voice Recognition Toggle
-  const toggleRecording = () => {
-    if (!speechSupported) {
-      alert('Speech recognition is not supported in this browser. Please type your response.');
+  // 8. Robust Live Voice Recognition (STT)
+  const startRecording = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome, Safari, or Edge.');
       return;
     }
 
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-    } else {
-      try {
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        recognitionRef.current?.start();
-        setIsRecording(true);
-      } catch (err) {
-        console.warn('Speech start error:', err);
-        setIsRecording(false);
+    try {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      if (recognitionRef.current) {
+        try { recognitionRef.current.abort(); } catch (e) {}
       }
+
+      const recog = new SpeechRecognition();
+      recog.continuous = true;
+      recog.interimResults = true;
+      recog.lang = speechLanguage;
+
+      let baseText = studentAnswer ? studentAnswer.trim() + ' ' : '';
+
+      recog.onstart = () => {
+        setIsRecording(true);
+        setInterimTranscript('');
+      };
+
+      recog.onresult = (event: any) => {
+        let currentInterim = '';
+        let newlyFinal = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const item = event.results[i];
+          if (item.isFinal) {
+            newlyFinal += item[0].transcript + ' ';
+          } else {
+            currentInterim += item[0].transcript;
+          }
+        }
+
+        if (newlyFinal) {
+          baseText += newlyFinal;
+          setStudentAnswer(baseText.trim());
+          setInterimTranscript('');
+        } else {
+          setInterimTranscript(currentInterim);
+        }
+      };
+
+      recog.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone permission was denied. Please allow microphone access in your browser address bar.');
+        }
+        setIsRecording(false);
+        setInterimTranscript('');
+      };
+
+      recog.onend = () => {
+        setIsRecording(false);
+        setInterimTranscript('');
+      };
+
+      recognitionRef.current = recog;
+      recog.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.warn('Failed to start speech recognition:', err);
+      setIsRecording(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    setIsRecording(false);
+    setInterimTranscript('');
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -999,20 +1040,77 @@ export const AdaptiveVivaPage: React.FC = () => {
                 Oral Candidate Response
               </label>
 
-              {/* Real-time Voice Toggle */}
-              <button
-                onClick={toggleRecording}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
-                  isRecording
-                    ? 'bg-rose-600 text-white animate-pulse shadow-md shadow-rose-600/20'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-                title={speechSupported ? 'Record audio response' : 'Speech recognition not supported'}
-              >
-                {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-rose-600" />}
-                {isRecording ? 'Listening (Tap to Stop)...' : 'Voice Input (STT)'}
-              </button>
+              {/* Real-time Voice Toggle & Language Switcher */}
+              <div className="flex items-center gap-2">
+                {/* Language Switcher */}
+                <div className="inline-flex items-center rounded-xl bg-slate-100 p-0.5 text-[11px] font-bold border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isRecording) stopRecording();
+                      setSpeechLanguage('en-US');
+                    }}
+                    className={`px-2 py-1 rounded-lg transition ${
+                      speechLanguage === 'en-US'
+                        ? 'bg-white text-teal-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isRecording) stopRecording();
+                      setSpeechLanguage('bn-BD');
+                    }}
+                    className={`px-2 py-1 rounded-lg transition ${
+                      speechLanguage === 'bn-BD'
+                        ? 'bg-white text-teal-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    বাংলা
+                  </button>
+                </div>
+
+                {/* Voice Button */}
+                <button
+                  type="button"
+                  onClick={toggleRecording}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition ${
+                    isRecording
+                      ? 'bg-rose-600 text-white animate-pulse shadow-md shadow-rose-600/30'
+                      : 'bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200'
+                  }`}
+                  title={speechSupported ? 'Click to speak your response' : 'Speech recognition not supported'}
+                >
+                  {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5 text-teal-600" />}
+                  {isRecording ? 'Listening (Tap to Stop)...' : 'Voice Input (STT)'}
+                </button>
+              </div>
             </div>
+
+            {/* Real-time Listening Wave & Interim Speech Preview */}
+            {isRecording && (
+              <div className="p-3 rounded-2xl bg-rose-50/80 border border-rose-200 flex items-center gap-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-1">
+                  <span className="w-1.5 h-4 bg-rose-600 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                  <span className="w-1.5 h-6 bg-rose-600 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                  <span className="w-1.5 h-4 bg-rose-600 rounded-full animate-bounce" />
+                </div>
+                <div className="text-xs text-rose-800 font-medium truncate flex-1">
+                  <span className="font-bold uppercase tracking-wider text-[10px] text-rose-600 mr-1.5">
+                    Listening ({speechLanguage === 'en-US' ? 'English' : 'বাংলা'}):
+                  </span>
+                  {interimTranscript ? (
+                    <span className="italic">"{interimTranscript}"</span>
+                  ) : (
+                    <span className="text-rose-400">Speak into your microphone now...</span>
+                  )}
+                </div>
+              </div>
+            )}
 
             <textarea
               rows={3}
