@@ -188,6 +188,7 @@ export interface PatientConversationState {
   redFlagsDisclosed: string[];
   lastStudentMessage?: string;
   lastPatientResponse?: string;
+  sessionHistoryTracker?: Record<string, { turnDisclosed: number; keyFactDisclosed?: string }>;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -233,6 +234,9 @@ export interface EngineDebugInfo {
   personalityApplied: string;
   emotionalState: PatientEmotion;
   validationResult: ConsistencyValidationResult;
+  historyTracker?: any;
+  contextResolution?: any;
+  qualityGuardResult?: any;
 }
 
 export interface PatientEngineResult {
@@ -241,6 +245,7 @@ export interface PatientEngineResult {
   emotion: PatientEmotion;
   intensity: number;
   intents: ClinicalIntent[];
+  historyTracker?: any;
   debug: EngineDebugInfo;
 }
 

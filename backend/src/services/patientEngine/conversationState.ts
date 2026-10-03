@@ -14,6 +14,10 @@ import { StructuredClinicalFactExtractor } from './factExtractor';
 const stateCache = new Map<string, PatientConversationState>();
 
 export class PatientConversationStateManager {
+  public static getState(sessionId: string): PatientConversationState | undefined {
+    return stateCache.get(sessionId);
+  }
+
   /**
    * Retrieves or initializes a PatientConversationState for a session.
    * Can rehydrate historical facts from DB conversation messages.

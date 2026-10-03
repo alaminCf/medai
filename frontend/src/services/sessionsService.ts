@@ -38,6 +38,7 @@ export interface SendMessageResponse {
     speakingSpeed?: number;
   };
   avatarConfig?: AvatarConfig;
+  historyTracker?: any;
   _debug?: any;
 }
 
@@ -102,6 +103,16 @@ export const sessionsService = {
 
   async getCaseRubric(caseId: string): Promise<{ rubric: ClinicalCaseRubric }> {
     const { data } = await api.get<{ rubric: ClinicalCaseRubric }>(`/cases/${caseId}/rubric`);
+    return data;
+  },
+
+  async getHistorySummary(sessionId: string): Promise<any> {
+    const { data } = await api.get(`/sessions/${sessionId}/history-summary`);
+    return data;
+  },
+
+  async getTimeline(sessionId: string): Promise<any> {
+    const { data } = await api.get(`/sessions/${sessionId}/timeline`);
     return data;
   },
 };

@@ -8,6 +8,11 @@ import speechRecognitionService from '../services/speechRecognitionService';
 import textToSpeechService from '../services/textToSpeechService';
 import { ClinicalEvaluationEngine } from '../services/clinicalEvaluationEngine';
 import { PatientCharacterSystem } from '../services/patientEngine/characterSystem';
+import {
+  ConsultationTimelineService,
+  ClinicalHistoryTracker,
+  PatientConversationStateManager,
+} from '../services/patientEngine';
 
 const router = Router();
 const upload = multer({
@@ -433,6 +438,7 @@ router.post(
           timestamp: studentMsg.timestamp,
         },
         patientMessage: patientMsg,
+        historyTracker: aiResponse.historyTracker,
         provider: aiResponse.provider,
         emotion: aiResponse.emotion,
         intensity: aiResponse.intensity,
@@ -1013,5 +1019,55 @@ router.post('/:sessionId/retry', authenticate, async (req: AuthRequest, res: Res
     res.status(500).json({ error: 'Failed to retry consultation' });
   }
 });
+
+
+// Phase 3: Consultation Timeline & Replay event trace
+router.get(
+  '/:sessionId/timeline',
+  authenticate,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const { sessionId } = req.params;
+    const timeline = ConsultationTimelineService.getTimeline(sessionId);
+    res.json({ timeline });
+  }
+);
+
+// Phase 3: Post-consultation dynamic history coverage summary
+router.get(
+  '/:sessionId/history-summary',
+  authenticate,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const { sessionId } = req.params;
+    try {
+      const session = await prisma.practiceSession.findUnique({
+        where: { id: sessionId },
+        include: { patientCase: true },
+      });
+      if (!session) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+      const state = PatientConversationStateManager.getState(sessionId);
+      if (!state) {
+        res.json({
+          chiefComplaint: session.patientCase.chiefComplaint,
+          patientName: session.patientCase.patientName,
+          coveredCount: 0,
+          totalCount: 16,
+          coveragePercentage: 0,
+          coveredHistory: [],
+          missedHistory: [],
+          redFlagsAsked: false,
+        });
+        return;
+      }
+      const debrief = ClinicalHistoryTracker.generateConsultationDebrief(state, session.patientCase as any);
+      res.json(debrief);
+    } catch (err) {
+      console.error('History summary error:', err);
+      res.status(500).json({ error: 'Failed to generate history summary' });
+    }
+  }
+);
 
 export default router;

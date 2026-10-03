@@ -6,6 +6,7 @@ import textToSpeechService from '../services/textToSpeechService';
 import PatientAvatarCanvas from '../components/avatar/PatientAvatarCanvas';
 import avatarEventBus from '../services/avatarEventBus';
 import { PatientEmotionEngine } from '../services/patientEmotionEngine';
+import { ClinicalHistoryTrackerDrawer, HistoryTrackerSummary } from '../components/session/ClinicalHistoryTrackerDrawer';
 import type {
   PracticeSession,
   ConversationMessage,
@@ -19,6 +20,7 @@ import { formatDuration } from '../utils/formatters';
 import {
   Clock,
   Send,
+  ClipboardList,
   AlertCircle,
   X,
   Volume2,
@@ -61,6 +63,9 @@ export default function PracticeSessionPage() {
   // Developer Debug Mode (Part 31)
   const [lastDebugInfo, setLastDebugInfo] = useState<any>(null);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  // Phase 3: Clinical History Taking Tracker State
+  const [trackerSummary, setTrackerSummary] = useState<HistoryTrackerSummary | null>(null);
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState<boolean>(false);
 
   // Phase 2 & 3: Consultation Mode, Voice, and Avatar State
   const [mode, setMode] = useState<ConsultationMode>('voice');
@@ -172,6 +177,14 @@ export default function PracticeSessionPage() {
           setCurrentEmotion('concerned');
           setEmotionIntensity(0.35);
         }
+
+        // Fetch initial history coverage
+        sessionsService
+          .getHistorySummary(sessionId)
+          .then((summary) => {
+            if (summary && summary.items) setTrackerSummary(summary);
+          })
+          .catch((err) => console.log('History summary initial load note:', err));
 
         // Play initial greeting
         const opening = sess.messages?.find((m) => m.sender === 'patient');
@@ -410,6 +423,16 @@ export default function PracticeSessionPage() {
         setLastDebugInfo(response._debug);
       }
 
+      // Phase 3: Update Clinical History Tracker
+      if (response.historyTracker) {
+        setTrackerSummary(response.historyTracker);
+      }
+
+      // Phase 3: Update Clinical History Tracker
+      if (response.historyTracker) {
+        setTrackerSummary(response.historyTracker);
+      }
+
       // Play patient voice with synchronized avatar lip-sync
       const patientText = response.patientMessage.message;
       playPatientVoice(patientText, session.language || 'en');
@@ -582,8 +605,17 @@ export default function PracticeSessionPage() {
             </div>
           </div>
 
-          {/* Mobile Right: Timer, Debug & End */}
+          {/* Mobile Right: Timer, History, Debug & End */}
           <div className="flex items-center gap-1.5 md:hidden flex-shrink-0">
+            {/* Mobile History Tracker Button */}
+            <button
+              onClick={() => setShowHistoryDrawer(true)}
+              className="flex items-center gap-1 bg-teal-950/80 hover:bg-teal-900 border border-teal-500/40 text-teal-300 px-2 py-1 rounded-md text-[11px] font-semibold transition-all flex-shrink-0"
+              title="Clinical History Tracker Checklist"
+            >
+              <ClipboardList className="w-3.5 h-3.5 text-teal-400" />
+              <span>{trackerSummary?.coveragePercentage ?? 0}%</span>
+            </button>
             {lastDebugInfo && (
               <button
                 onClick={() => setShowDebugModal(true)}
@@ -656,6 +688,16 @@ export default function PracticeSessionPage() {
           >
             {mode === 'voice' ? <Mic className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> : <Keyboard className="w-3 h-3 sm:w-3.5 sm:h-3.5" />}
             <span>{mode === 'voice' ? 'Voice' : 'Text'}</span>
+          </button>
+
+          {/* Desktop Clinical History Tracker Toggle */}
+          <button
+            onClick={() => setShowHistoryDrawer(true)}
+            className="hidden md:flex items-center gap-1.5 text-xs font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-teal-500/40 bg-teal-950/60 hover:bg-teal-900/80 text-teal-300 transition-all flex-shrink-0 shadow-sm"
+            title="View Real-Time History Exploration Checklist"
+          >
+            <ClipboardList className="w-3.5 h-3.5 text-teal-400" />
+            <span>History ({trackerSummary?.coveragePercentage ?? 0}%)</span>
           </button>
 
           {/* Audio Mute/Unmute */}
@@ -826,6 +868,33 @@ export default function PracticeSessionPage() {
               <button onClick={() => setVoiceFallbackNotice('')} className="text-amber-400 hover:text-amber-200">
                 <X className="w-3.5 h-3.5" />
               </button>
+            </div>
+          )}
+
+          {/* Real-time History Progress Banner */}
+          {isActive && (
+            <div
+              onClick={() => setShowHistoryDrawer(true)}
+              className="bg-slate-900/95 border-t border-slate-800/80 px-3 py-1.5 cursor-pointer hover:bg-slate-800/80 transition-colors flex items-center justify-between text-xs flex-shrink-0"
+              title="Click to view full History Taking Checklist"
+            >
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-3.5 h-3.5 text-teal-400 flex-shrink-0" />
+                <span className="text-slate-300 font-medium text-[11px]">Clinical History Taking:</span>
+                <span className="text-teal-400 font-bold text-[11px]">
+                  {trackerSummary?.coveredCount ?? 0}/{trackerSummary?.totalCount ?? 16} domains
+                </span>
+                <div className="hidden sm:block w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden ml-1">
+                  <div
+                    className="h-full bg-teal-500 rounded-full transition-all duration-300"
+                    style={{ width: `${trackerSummary?.coveragePercentage ?? 0}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-teal-400 text-[10px] font-semibold flex items-center gap-0.5 hover:underline">
+                <span>View Checklist ({trackerSummary?.coveragePercentage ?? 0}%)</span>
+                <span>→</span>
+              </span>
             </div>
           )}
 
@@ -1166,6 +1235,19 @@ export default function PracticeSessionPage() {
           </div>
         </div>
       )}
+
+      {/* ──────────────────────────────────────────────────────────── */}
+      {/* Phase 3: Clinical History Taking Tracker Drawer             */}
+      {/* ──────────────────────────────────────────────────────────── */}
+      <ClinicalHistoryTrackerDrawer
+        isOpen={showHistoryDrawer}
+        onClose={() => setShowHistoryDrawer(false)}
+        trackerSummary={trackerSummary}
+        onAskSuggestedQuestion={(q) => {
+          setShowHistoryDrawer(false);
+          handleQuickAsk(q);
+        }}
+      />
 
       {/* ──────────────────────────────────────────────────────────── */}
       {/* End Consultation Confirmation Modal                         */}

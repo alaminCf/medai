@@ -139,6 +139,9 @@ export class PatientDisclosureRules {
     if (isBn) {
       switch (personality) {
         case 'anxious':
+          if (cleanBase.startsWith('জি ডাক্তার') || cleanBase.startsWith('না ডাক্তার')) {
+            return `${cleanBase}। এটা কি কোনো বড় বিপদের লক্ষণ ডাক্তার সাহেব?`;
+          }
           return `ডাক্তার সাহেব... ${cleanBase}। এটা কি কোনো বড় বিপদের লক্ষণ ডাক্তার সাহেব?`;
         case 'quiet':
           return `${cleanBase}।`;

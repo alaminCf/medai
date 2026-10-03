@@ -151,7 +151,7 @@ export class TruthLayerBuilder {
 
     const combinedText = (sym + ' ' + cc);
     const normalizedDigits = bnToEnDigits(combinedText);
-    const durMatch = normalizedDigits.match(/(\d+)\s*(days?|hours?|weeks?|months?|দিন|ঘণ্টা|ঘন্টা|সপ্তাহ|মাস)/i);
+    const durMatch = normalizedDigits.match(/(\d+)[\s-]*(days?|hours?|weeks?|months?|দিন|ঘণ্টা|ঘন্টা|সপ্তাহ|মাস)/i);
     if (durMatch) {
       const num = durMatch[1];
       const unit = durMatch[2].toLowerCase();
@@ -261,13 +261,16 @@ export class TruthLayerBuilder {
     // 6. Radiation
     let radiationEn = 'No, it does not spread anywhere else.';
     let radiationBn = 'না ডাক্তার, এটা অন্য কোথাও ছড়ায় না, এক জায়গাতেই থাকে।';
-    if (sym.includes('radiates to left arm') || sym.includes('radiates to arm') || sym.includes('shoulder and jaw')) {
+    if (
+      lowerCombined.includes('radiates to left arm') ||
+      lowerCombined.includes('radiat') && (lowerCombined.includes('left') || lowerCombined.includes('shoulder') || lowerCombined.includes('jaw') || lowerCombined.includes('arm'))
+    ) {
       radiationEn = 'Yes, the pain spreads down my left arm and up towards my shoulder and jaw.';
       radiationBn = 'জি ডাক্তার, ব্যথাটা আমার বাম হাত দিয়ে নেমে যায় এবং কাঁধ ও চোয়ালের দিকেও ছড়ায়।';
-    } else if (sym.includes('radiates to right shoulder') || sym.includes('shoulder tip')) {
+    } else if (lowerCombined.includes('radiates to right shoulder') || lowerCombined.includes('shoulder tip')) {
       radiationEn = 'Yes, it shoots up towards my right shoulder tip and back.';
       radiationBn = 'জি ডাক্তার, ব্যথাটা পেছনের দিকে এবং ডান কাঁধের মাথায় ছড়িয়ে পড়ে।';
-    } else if (sym.includes('radiates to back')) {
+    } else if (lowerCombined.includes('radiates to back') || (lowerCombined.includes('radiat') && lowerCombined.includes('back'))) {
       radiationEn = 'Yes, it shoots straight through to my back.';
       radiationBn = 'জি ডাক্তার, এটা সোজা পিঠের দিকে চলে যায়।';
     }
